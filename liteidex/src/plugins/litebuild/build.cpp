@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -71,6 +71,11 @@ QString Build::work() const
     return m_work;
 }
 
+QString Build::lock() const
+{
+    return m_lock;
+}
+
 QList<BuildAction*> Build::actionList() const
 {
     return m_actionList;
@@ -128,8 +133,7 @@ void Build::make()
     }
 
     foreach(LiteApi::BuildAction *ba,m_actionList) {
-        QAction *act = this->makeAction(ba);
-        act->setObjectName(ba->id());
+        QAction *act = this->makeAction(ba);        
         QString idMenu = ba->menu();
         if (idMenu.isEmpty()) {
             QMenu *menu = m_idMenuMap.value(ba->id());
@@ -139,8 +143,10 @@ void Build::make()
                 menuAction->setText(act->text());
                 //menuAction->setToolTip(act->toolTip());
                 menuAction->setIcon(act->icon());
-                connect(menuAction,SIGNAL(triggered()),this,SLOT(slotBuildAction()));
-                menu->addAction(act);
+                if (!ba->isFolder()) {
+                    connect(menuAction,SIGNAL(triggered()),this,SLOT(slotBuildAction()));
+                    menu->addAction(act);
+                }
                 m_actions.append(menuAction);
             } else {
                 m_actions.append(act);
@@ -177,8 +183,10 @@ QAction *Build::makeAction(BuildAction *ba)
                 act->setIcon(icon);
             }
         }
+        if (!ba->isFolder()) {
+            connect(act,SIGNAL(triggered()),this,SLOT(slotBuildAction()));
+        }
     }
-    connect(act,SIGNAL(triggered()),this,SLOT(slotBuildAction()));
     return act;
 }
 
@@ -208,8 +216,49 @@ void Build::setWork(const QString &work)
     m_work = work;
 }
 
+void Build::setLock(const QString &lock)
+{
+    m_lock = lock;
+}
+
 void Build::appendAction(BuildAction *act)
 {
+    for (int i = 0; i < m_actionList.size(); i++) {
+        BuildAction *ba = m_actionList[i];
+        if (ba->id() == act->id()) {
+#ifdef Q_OS_MAC
+                if (act->os().contains("macosx",Qt::CaseInsensitive)) {
+                    m_actionList[i] = act;
+                    delete ba;
+                }
+#endif
+#ifdef Q_OS_WIN
+                if (act->os().contains("windows",Qt::CaseInsensitive)) {
+                    m_actionList[i] = act;
+                    delete ba;
+                }
+#endif
+#ifdef Q_OS_LINUX
+                if (act->os().contains("linux",Qt::CaseInsensitive)) {
+                    m_actionList[i] = act;
+                    delete ba;
+                }
+#endif
+#ifdef Q_OS_FREEBSD
+                if (act->os().contains("freebsd",Qt::CaseInsensitive)) {
+                    m_actionList[i] = act;
+                    delete ba;
+                }
+#endif
+#ifdef Q_OS_OPENBD
+                if (act->os().contains("openbsd",Qt::CaseInsensitive)) {
+                    m_actionList[i] = act;
+                    delete ba;
+                }
+#endif
+                return;
+        }
+    }
     m_actionList.append(act);
 }
 
@@ -242,7 +291,7 @@ bool Build::loadBuild(LiteApi::IBuildManager *manager, const QString &fileName)
     return Build::loadBuild(manager,&file,fileName);
 }
 
-static int build_ver = 1;
+static int build_ver = 2;
 
 bool Build::loadBuild(LiteApi::IBuildManager *manager, QIODevice *dev, const QString &fileName)
 {
@@ -266,6 +315,7 @@ bool Build::loadBuild(LiteApi::IBuildManager *manager, QIODevice *dev, const QSt
                     build->setType(attrs.value("type").toString());
                     build->setId(attrs.value("id").toString());
                     build->setWork(attrs.value("work").toString());
+                    build->setLock(attrs.value("lock").toString());
                 }
             } else if (reader.name() == "lookup" && lookup == 0 && build != 0) {
                 lookup = new BuildLookup;
@@ -275,6 +325,7 @@ bool Build::loadBuild(LiteApi::IBuildManager *manager, QIODevice *dev, const QSt
             } else if (reader.name() == "action" && act == 0 && build != 0) {
                 act = new BuildAction;
                 act->setId(attrs.value("id").toString());
+                act->setOs(attrs.value("os").toString());
                 act->setMenu(attrs.value("menu").toString());
                 act->setKey(attrs.value("key").toString());
                 act->setCmd(attrs.value("cmd").toString());
@@ -289,6 +340,8 @@ bool Build::loadBuild(LiteApi::IBuildManager *manager, QIODevice *dev, const QSt
                 act->setKillold(attrs.value("killold").toString());
                 act->setSeparator(attrs.value("separator").toString());
                 act->setNavigate(attrs.value("navigate").toString());
+                act->setFolder(attrs.value("folder").toString());
+                act->setTakeall(attrs.value("takeall").toString());
                 QString img = attrs.value("img").toString();
                 if (!img.isEmpty()) {
                     if (img.at(0) != ':') {

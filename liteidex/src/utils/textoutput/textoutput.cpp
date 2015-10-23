@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -23,12 +23,14 @@
 
 #include "textoutput.h"
 #include "colorstyle/colorstyle.h"
+#include "../liteapp/liteapp_global.h"
 #include <QTextCharFormat>
 #include <QMouseEvent>
 #include <QKeyEvent>
 #include <QTextCursor>
 #include <QTextBlock>
 #include <QElapsedTimer>
+#include <QTime>
 //lite_memory_check_begin
 #if defined(WIN32) && defined(_MSC_VER) &&  defined(_DEBUG)
      #define _CRTDBG_MAP_ALLOC
@@ -59,7 +61,11 @@ TextOutput::TextOutput(LiteApi::IApplication *app, bool readOnly, QWidget *paren
     m_clrTag = Qt::darkBlue;
     m_clrError = Qt::red;
     m_existsTimer.start();
-    connect(m_liteApp,SIGNAL(loaded()),this,SLOT(appLoaded()));
+
+    connect(m_liteApp->editorManager(),SIGNAL(colorStyleSchemeChanged()),this,SLOT(loadColorStyleScheme()));
+    connect(m_liteApp->optionManager(),SIGNAL(applyOption(QString)),this,SLOT(applyOption(QString)));
+
+    this->applyOption(OPTION_LITEOUTPUT);
 }
 
 void TextOutput::append(const QString &text)
@@ -74,7 +80,7 @@ void TextOutput::append(const QString &text,const QBrush &foreground)
     appendAndReset(text, f);
 }
 
-void TextOutput::appendTag(const QString &text, bool error)
+void TextOutput::appendTag(const QString &text, bool error, bool time)
 {
     QTextCharFormat f = m_fmt;
     f.setFontWeight(QFont::Bold);
@@ -82,8 +88,12 @@ void TextOutput::appendTag(const QString &text, bool error)
         f.setForeground(m_clrError);
     } else {
         f.setForeground(m_clrTag);
+    }    
+    if (time) {
+        appendAndReset(QTime::currentTime().toString("hh:mm:ss: ")+text, f);
+    } else {
+        appendAndReset(text, f);
     }
-    appendAndReset(text, f);
 }
 
 void TextOutput::appendAndReset(const QString &text, QTextCharFormat& f)
@@ -92,9 +102,9 @@ void TextOutput::appendAndReset(const QString &text, QTextCharFormat& f)
     m_existsTimer.restart();
 }
 
-void TextOutput::updateExistsTextColor()
+void TextOutput::updateExistsTextColor(bool force)
 {
-    if (!m_existsTimer.hasExpired(2500)) return;
+    if (!m_existsTimer.hasExpired(2500) && !force) return;
 
     QTextDocument* doc = document();
     for (QTextBlock it = doc->begin(); it != doc->end(); it = it.next())
@@ -110,15 +120,9 @@ void TextOutput::setMaxLine(int max)
     this->setMaximumBlockCount(max);;
 }
 
-void TextOutput::appLoaded()
-{
-    connect(m_liteApp->editorManager(),SIGNAL(colorStyleSchemeChanged()),this,SLOT(loadColorStyleScheme()));
-    this->loadColorStyleScheme();
-}
-
 void TextOutput::loadColorStyleScheme()
 {
-    bool useColorShceme = m_liteApp->settings()->value(TEXTOUTPUT_USECOLORSCHEME,true).toBool();
+    bool useColorShceme = m_liteApp->settings()->value(OUTPUT_USECOLORSCHEME,true).toBool();
 
     const ColorStyleScheme *colorScheme = m_liteApp->editorManager()->colorStyleScheme();
     const ColorStyle *text = colorScheme->findStyle("Text");
@@ -175,4 +179,36 @@ void TextOutput::loadColorStyleScheme()
     cur.select(QTextCursor::Document);
     cur.setCharFormat(m_fmt);
     fadeText(cur);
+}
+
+void TextOutput::applyOption(QString opt)
+{
+    if (opt != OPTION_LITEOUTPUT) {
+        return;
+    }
+    QString fontFamily = m_liteApp->settings()->value(OUTPUT_FAMILY).toString();
+    int fontSize = m_liteApp->settings()->value(OUTPUT_FONTSIZE,12).toInt();
+
+    int fontZoom = m_liteApp->settings()->value(OUTPUT_FONTZOOM,100).toInt();
+
+    bool antialias = m_liteApp->settings()->value(OUTPUT_ANTIALIAS,true).toBool();
+
+    bool lineWrap = m_liteApp->settings()->value(OUTPUT_LINEWRAP,false).toBool();
+
+    QFont font = this->font();
+    if (!fontFamily.isEmpty()) {
+        font.setFamily(fontFamily);
+    }
+
+    font.setPointSize(fontSize*fontZoom/100.0);
+    if (antialias) {
+        font.setStyleStrategy(QFont::PreferAntialias);
+    } else {
+        font.setStyleStrategy(QFont::NoAntialias);
+    }
+    this->setFont(font);
+
+    this->setLineWrapMode(lineWrap ? QPlainTextEdit::WidgetWidth : QPlainTextEdit::NoWrap);
+
+    this->loadColorStyleScheme();
 }

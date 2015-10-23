@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -24,6 +24,7 @@
 #include "golangfmtplugin.h"
 #include "golangfmt.h"
 #include "golangfmtoptionfactory.h"
+#include "liteeditorapi/liteeditorapi.h"
 #include "fileutil/fileutil.h"
 
 #include <QMenu>
@@ -55,15 +56,18 @@ bool GolangFmtPlugin::load(LiteApi::IApplication *app)
 
     m_fmt = new GolangFmt(app,this);
     m_gofmtAct = new QAction(QIcon("icon:golangfmt/images/gofmt.png"),tr("Format Code"),this);
+    m_goimportsAct = new QAction(QIcon("icon:golangfmt/images/gofmt.png"),tr("Format Code (Adjusts Imports)"),this);
 
     LiteApi::IActionContext *actionContext = m_liteApp->actionManager()->getActionContext(this,"GoFmt");
 
-    actionContext->regAction(m_gofmtAct,"Gofmt","Shift+F7");
+    actionContext->regAction(m_gofmtAct,"Gofmt","Ctrl+I");
+    actionContext->regAction(m_goimportsAct,"GoImports","Ctrl+Alt+I");
 
     m_goplayAct = new QAction(QIcon("icon:golangfmt/images/gofmt.png"),tr("Format Code"),this);
-    actionContext->regAction(m_goplayAct,"Goplayfmt","Shift+F7");
+    actionContext->regAction(m_goplayAct,"Goplayfmt","Ctrl+I");
 
     connect(m_gofmtAct,SIGNAL(triggered()),m_fmt,SLOT(gofmt()));
+    connect(m_goimportsAct,SIGNAL(triggered()),m_fmt,SLOT(goimports()));
     connect(m_goplayAct,SIGNAL(triggered()),this,SLOT(goplayFmt()));
 
     connect(app->editorManager(),SIGNAL(editorCreated(LiteApi::IEditor*)),this,SLOT(editorCreated(LiteApi::IEditor*)));
@@ -99,6 +103,10 @@ void GolangFmtPlugin::appLoaded()
             menu->addSeparator();
             menu->addAction(m_goplayAct);            
         }
+        LiteApi::ILiteEditor *ed = LiteApi::getLiteEditor(m_playEditor);
+        if (ed) {
+            ed->setEnableAutoIndentAction(false);
+        }
     }
 }
 
@@ -114,11 +122,17 @@ void GolangFmtPlugin::editorCreated(LiteApi::IEditor *editor)
     if (menu) {
         menu->addSeparator();
         menu->addAction(m_gofmtAct);
+        menu->addAction(m_goimportsAct);
     }
     menu = LiteApi::getContextMenu(editor);
     if (menu) {
         menu->addSeparator();
         menu->addAction(m_gofmtAct);
+        menu->addAction(m_goimportsAct);
+    }
+    LiteApi::ILiteEditor *ed = LiteApi::getLiteEditor(editor);
+    if (ed) {
+        ed->setEnableAutoIndentAction(false);
     }
 }
 

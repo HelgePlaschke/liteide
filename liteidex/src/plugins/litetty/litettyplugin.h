@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -44,9 +44,9 @@ class PluginFactory : public LiteApi::PluginFactoryT<LiteTtyPlugin>
 public:
     PluginFactory() {
         m_info->setId("plugin/LiteTty");
-        m_info->setVer("x19");
+        m_info->setVer("X19");
         m_info->setName("LiteTty");
-        m_info->setAnchor("visualfc");
+        m_info->setAuthor("visualfc");
         m_info->setInfo("LiteIDE tty Util");
         //m_info->appendDepend("plugin/liteenv");
     }

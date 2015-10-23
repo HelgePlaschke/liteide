@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -24,7 +24,6 @@
 #include "liteeditoroption.h"
 #include "ui_liteeditoroption.h"
 #include "liteeditor_global.h"
-#include "textoutput/textoutput.h"
 #include <QFontDatabase>
 #include <QDir>
 #include <QFileInfo>
@@ -60,6 +59,8 @@ LiteEditorOption::LiteEditorOption(LiteApi::IApplication *app,QObject *parent) :
     m_fontFamily = m_liteApp->settings()->value(EDITOR_FAMILY,"Monospace").toString();
 #elif defined(Q_OS_MAC)
     m_fontFamily = m_liteApp->settings()->value(EDITOR_FAMILY,"Menlo").toString();
+#else
+    m_fontFamily = m_liteApp->settings()->value(EDITOR_FAMILY,"Monospace").toString();
 #endif
     m_fontSize = m_liteApp->settings()->value(EDITOR_FONTSIZE,12).toInt();
 
@@ -95,16 +96,18 @@ LiteEditorOption::LiteEditorOption(LiteApi::IApplication *app,QObject *parent) :
     bool autoBraces2 = m_liteApp->settings()->value(EDITOR_AUTOBRACE2,true).toBool();
     bool autoBraces3 = m_liteApp->settings()->value(EDITOR_AUTOBRACE3,true).toBool();
     bool autoBraces4 = m_liteApp->settings()->value(EDITOR_AUTOBRACE4,true).toBool();
+    bool autoBraces5 = m_liteApp->settings()->value(EDITOR_AUTOBRACE5,true).toBool();
     bool caseSensitive = m_liteApp->settings()->value(EDITOR_COMPLETER_CASESENSITIVE,false).toBool();
     bool cleanWhitespaceOnSave = m_liteApp->settings()->value(EDITOR_CLEANWHITESPACEONSAVE,false).toBool();
     bool lineNumberVisible = m_liteApp->settings()->value(EDITOR_LINENUMBERVISIBLE,true).toBool();
+    bool codeFoldVisible = m_liteApp->settings()->value(EDITOR_CODEFOLDVISIBLE,true).toBool();
     bool rightLineVisible = m_liteApp->settings()->value(EDITOR_RIGHTLINEVISIBLE,true).toBool();
     bool eofVisible = m_liteApp->settings()->value(EDITOR_EOFVISIBLE,false).toBool();
     bool defaultWordWrap = m_liteApp->settings()->value(EDITOR_DEFAULTWORDWRAP,false).toBool();
-    bool outputUseColor = m_liteApp->settings()->value(TEXTOUTPUT_USECOLORSCHEME,true).toBool();
     bool indentLineVisible = m_liteApp->settings()->value(EDITOR_INDENTLINEVISIBLE,true).toBool();
     bool wheelZoom = m_liteApp->settings()->value(EDITOR_WHEEL_SCROLL,true).toBool();
-
+    bool offsetVisible = m_liteApp->settings()->value(EDITOR_OFFSETVISIBLE,false).toBool();
+    bool visualizeWhitespace = m_liteApp->settings()->value(EDITOR_VISUALIZEWHITESPACE,false).toBool();
     int rightLineWidth = m_liteApp->settings()->value(EDITOR_RIGHTLINEWIDTH,80).toInt();
 
     int min = m_liteApp->settings()->value(EDITOR_PREFIXLENGTH,1).toInt();
@@ -116,7 +119,10 @@ LiteEditorOption::LiteEditorOption(LiteApi::IApplication *app,QObject *parent) :
     ui->autoBraces2CheckBox->setChecked(autoBraces2);
     ui->autoBraces3CheckBox->setChecked(autoBraces3);
     ui->autoBraces4CheckBox->setChecked(autoBraces4);
+    ui->autoBraces5CheckBox->setChecked(autoBraces5);
     ui->lineNumberVisibleCheckBox->setChecked(lineNumberVisible);
+    ui->visualizeWhitespaceCheckBox->setChecked(visualizeWhitespace);
+    ui->codeFoldVisibleCheckBox->setChecked(codeFoldVisible);
     ui->completerCaseSensitiveCheckBox->setChecked(caseSensitive);
     ui->preMinLineEdit->setText(QString("%1").arg(min));
     ui->cleanWhitespaceOnSaveCheckBox->setChecked(cleanWhitespaceOnSave);
@@ -125,8 +131,8 @@ LiteEditorOption::LiteEditorOption(LiteApi::IApplication *app,QObject *parent) :
     ui->eofVisibleCheckBox->setChecked(eofVisible);
     ui->defaultWordWrapCheckBox->setChecked(defaultWordWrap);
     ui->indentLineCheckBox->setChecked(indentLineVisible);
-    ui->outputUseColorSchemeCheck->setChecked(outputUseColor);
     ui->wheelZoomingCheckBox->setChecked(wheelZoom);
+    ui->offsetCheckBox->setChecked(offsetVisible);
 
     connect(ui->editPushButton,SIGNAL(clicked()),this,SLOT(editStyleFile()));
     connect(ui->rightLineVisibleCheckBox,SIGNAL(toggled(bool)),ui->rightLineWidthSpinBox,SLOT(setEnabled(bool)));    
@@ -134,7 +140,7 @@ LiteEditorOption::LiteEditorOption(LiteApi::IApplication *app,QObject *parent) :
     m_mimeModel = new QStandardItemModel(0,4,this);
     m_mimeModel->setHeaderData(0,Qt::Horizontal,tr("MIME Type"));
     m_mimeModel->setHeaderData(1,Qt::Horizontal,tr("Tab Width"));
-    m_mimeModel->setHeaderData(2,Qt::Horizontal,tr("Spaces as Tabs"));
+    m_mimeModel->setHeaderData(2,Qt::Horizontal,tr("Tab To Spaces"));
     m_mimeModel->setHeaderData(3,Qt::Horizontal,tr("File Extensions"));
     connect(m_mimeModel,SIGNAL(itemChanged(QStandardItem*)),this,SLOT(mimeItemChanged(QStandardItem*)));
 
@@ -147,11 +153,11 @@ LiteEditorOption::LiteEditorOption(LiteApi::IApplication *app,QObject *parent) :
 #endif
 
     foreach(QString mime, m_liteApp->editorManager()->mimeTypeList()) {
-        if (mime.startsWith("text/")) {
+        if (mime.startsWith("text/") || mime.startsWith("application/")) {
             QStandardItem *item = new QStandardItem(mime);
             item->setEditable(false);
             QString tabWidth = m_liteApp->settings()->value(EDITOR_TABWIDTH+mime,"4").toString();
-            bool tabUseSpace = m_liteApp->settings()->value(EDITOR_TABUSESPACE+mime,false).toBool();
+            bool tabUseSpace = m_liteApp->settings()->value(EDITOR_TABTOSPACES+mime,false).toBool();
             QStandardItem *tab = new QStandardItem(tabWidth);
             QStandardItem *useSpace = new QStandardItem();
             useSpace->setCheckable(true);
@@ -204,13 +210,8 @@ void LiteEditorOption::apply()
     }
     m_liteApp->settings()->setValue(EDITOR_FONTZOOM,fontZoom);
 
-    bool outputUseColor = ui->outputUseColorSchemeCheck->isChecked();
-    bool oldOutputUseColor = m_liteApp->settings()->value(TEXTOUTPUT_USECOLORSCHEME,true).toBool();
-
     QString style = ui->styleComboBox->currentText();
-    if (style != m_liteApp->settings()->value(EDITOR_STYLE,"default.xml").toString() ||
-            outputUseColor != oldOutputUseColor) {
-        m_liteApp->settings()->setValue(TEXTOUTPUT_USECOLORSCHEME,outputUseColor);
+    if (style != m_liteApp->settings()->value(EDITOR_STYLE,"default.xml").toString()) {
         m_liteApp->settings()->setValue(EDITOR_STYLE,style);
         QString styleFile = m_liteApp->resourcePath()+"/liteeditor/color/"+style;
         m_liteApp->editorManager()->loadColorStyleScheme(styleFile);
@@ -223,7 +224,9 @@ void LiteEditorOption::apply()
     bool autoBraces2 = ui->autoBraces2CheckBox->isChecked();
     bool autoBraces3 = ui->autoBraces3CheckBox->isChecked();
     bool autoBraces4 = ui->autoBraces4CheckBox->isChecked();
+    bool autoBraces5 = ui->autoBraces5CheckBox->isChecked();
     bool lineNumberVisible = ui->lineNumberVisibleCheckBox->isChecked();
+    bool codeFoldVisible = ui->codeFoldVisibleCheckBox->isChecked();
     bool caseSensitive = ui->completerCaseSensitiveCheckBox->isChecked();
     bool cleanWhitespaceOnSave = ui->cleanWhitespaceOnSaveCheckBox->isChecked();
     bool antialias = ui->antialiasCheckBox->isChecked();
@@ -232,11 +235,13 @@ void LiteEditorOption::apply()
     bool defaultWordWrap = ui->defaultWordWrapCheckBox->isChecked();
     bool indentLineVisible = ui->indentLineCheckBox->isChecked();
     bool wheelZoom = ui->wheelZoomingCheckBox->isChecked();
+    bool visualizeWhitespace = ui->visualizeWhitespaceCheckBox->isChecked();
     int rightLineWidth = ui->rightLineWidthSpinBox->value();
     int min = ui->preMinLineEdit->text().toInt();
     if (min < 0 || min > 10) {
         min = 1;
     }
+    bool offsetVisible = ui->offsetCheckBox->isChecked();
 
     m_liteApp->settings()->setValue(EDITOR_NOPRINTCHECK,noprintCheck);
     m_liteApp->settings()->setValue(EDITOR_FAMILY,m_fontFamily);
@@ -248,7 +253,9 @@ void LiteEditorOption::apply()
     m_liteApp->settings()->setValue(EDITOR_AUTOBRACE2,autoBraces2);
     m_liteApp->settings()->setValue(EDITOR_AUTOBRACE3,autoBraces3);
     m_liteApp->settings()->setValue(EDITOR_AUTOBRACE4,autoBraces4);
+    m_liteApp->settings()->setValue(EDITOR_AUTOBRACE5,autoBraces5);
     m_liteApp->settings()->setValue(EDITOR_LINENUMBERVISIBLE,lineNumberVisible);
+    m_liteApp->settings()->setValue(EDITOR_CODEFOLDVISIBLE,codeFoldVisible);
     m_liteApp->settings()->setValue(EDITOR_EOFVISIBLE,eofVisible);
     m_liteApp->settings()->setValue(EDITOR_DEFAULTWORDWRAP,defaultWordWrap);
     m_liteApp->settings()->setValue(EDITOR_INDENTLINEVISIBLE,indentLineVisible);
@@ -257,6 +264,8 @@ void LiteEditorOption::apply()
     m_liteApp->settings()->setValue(EDITOR_CLEANWHITESPACEONSAVE,cleanWhitespaceOnSave);
     m_liteApp->settings()->setValue(EDITOR_RIGHTLINEVISIBLE,rightLineVisible);
     m_liteApp->settings()->setValue(EDITOR_WHEEL_SCROLL,wheelZoom);
+    m_liteApp->settings()->setValue(EDITOR_OFFSETVISIBLE,offsetVisible);
+    m_liteApp->settings()->setValue(EDITOR_VISUALIZEWHITESPACE,visualizeWhitespace);
     if (rightLineVisible) {
         m_liteApp->settings()->setValue(EDITOR_RIGHTLINEWIDTH,rightLineWidth);
     }
@@ -268,8 +277,8 @@ void LiteEditorOption::apply()
         if (ok && n > 0 && n < 20) {
             m_liteApp->settings()->setValue(EDITOR_TABWIDTH+mime,n);
         }
-        bool b = m_mimeModel->item(i,2)->checkState() == Qt::Checked;
-        m_liteApp->settings()->setValue(EDITOR_TABUSESPACE+mime,b);
+        bool b = m_mimeModel->item(i,2)->checkState() == Qt::Checked;        
+        m_liteApp->settings()->setValue(EDITOR_TABTOSPACES+mime,b);
     }
 }
 
@@ -290,7 +299,7 @@ void LiteEditorOption::updatePointSizes()
     // Update point sizes
     const int oldSize = m_fontSize;
     if (ui->sizeComboBox->count()) {
-        const QString curSize = ui->sizeComboBox->currentText();
+        //const QString curSize = ui->sizeComboBox->currentText();
         ui->sizeComboBox->clear();
     }
     const QList<int> sizeLst = pointSizesForSelectedFont();

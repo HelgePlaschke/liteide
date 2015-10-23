@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -22,6 +22,7 @@
 // Creator: visualfc <visualfc@gmail.com>
 
 #include "markdownedit.h"
+#include "liteeditorapi/liteeditorapi.h"
 #include <QMenu>
 #include <QAction>
 #include <QToolBar>
@@ -74,6 +75,7 @@ MarkdownEdit::MarkdownEdit(LiteApi::IApplication *app, LiteApi::IEditor *editor,
     if (!m_ed) {
         return;
     }
+
     m_editor->setWordWrap(true);
 
     LiteApi::IActionContext *actionContext = m_liteApp->actionManager()->getActionContext(this,"Markdown");
@@ -123,8 +125,6 @@ MarkdownEdit::MarkdownEdit(LiteApi::IApplication *app, LiteApi::IEditor *editor,
     QAction *hr = new QAction(QIcon("icon:markdown/images/hr.png"),tr("Horizontal Rule"),this);
     actionContext->regAction(hr,"HorizontalRule","Ctrl+Shift+H");
 
-    QToolBar *toolBar = LiteApi::findExtensionObject<QToolBar*>(editor,"LiteApi.QToolBar");
-
     QMenu *menu = LiteApi::getEditMenu(editor);
     if (menu) {
         menu->addSeparator();
@@ -151,6 +151,13 @@ MarkdownEdit::MarkdownEdit(LiteApi::IApplication *app, LiteApi::IEditor *editor,
     }
     menu = LiteApi::getContextMenu(editor);
     if (menu) {
+        QMenu *h = menu->addMenu(tr("Heading"));
+        h->addAction(h1);
+        h->addAction(h2);
+        h->addAction(h3);
+        h->addAction(h4);
+        h->addAction(h5);
+        h->addAction(h6);
         menu->addSeparator();
         menu->addAction(link);
         menu->addAction(image);
@@ -166,6 +173,7 @@ MarkdownEdit::MarkdownEdit(LiteApi::IApplication *app, LiteApi::IEditor *editor,
         menu->addAction(hr);
     }
 
+    QToolBar *toolBar = LiteApi::getEditToolBar(editor);
     if (toolBar) {
         toolBar->addSeparator();
         toolBar->addAction(h1);

@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -39,7 +39,7 @@
 #define EDITOR_FONTZOOM "editor/fontzoom"
 #define EDITOR_ANTIALIAS "editor/antialias"
 #define EDITOR_TABWIDTH "editor/tabwidth/"
-#define EDITOR_TABUSESPACE "editor/tabusespace/"
+#define EDITOR_TABTOSPACES "editor/tabtospaces/"
 #define EDITOR_NOPRINTCHECK "editor/noprintcheck"
 #define EDITOR_AUTOINDENT "editor/autoindent"
 #define EDITOR_AUTOBRACE0 "editor/autobraces0"
@@ -48,13 +48,17 @@
 #define EDITOR_AUTOBRACE3 "editor/autobraces3"
 #define EDITOR_AUTOBRACE4 "editor/autobraces4"
 #define EDITOR_AUTOBRACE5 "editor/autobraces5"
+#define EDITOR_AUTOBRACE6 "editor/autobraces6"
 #define EDITOR_COMPLETER_CASESENSITIVE "editor/completercasesensitive"
 #define EDITOR_LINENUMBERVISIBLE "editor/linenumbervisible"
+#define EDITOR_VISUALIZEWHITESPACE "editor/visualizeWhitespace"
 #define EDITOR_PREFIXLENGTH "editor/prefixlength"
 #define EDITOR_CLEANWHITESPACEONSAVE "editor/cleanwhitespaceonsave"
 #define EDITOR_RIGHTLINEVISIBLE "editor/rightlinevisible"
 #define EDITOR_RIGHTLINEWIDTH "editor/rightlinewidth"
 #define EDITOR_EOFVISIBLE "editor/eofvisible"
+#define EDITOR_CODEFOLDVISIBLE "editor/codefoldvisible"
+#define EDITOR_OFFSETVISIBLE "editor/offsetvisible"
 #define EDITOR_DEFAULTWORDWRAP "editor/defaultwordwrap"
 #define EDITOR_INDENTLINEVISIBLE "editor/indentlinevisible"
 #define EDITOR_WHEEL_SCROLL "editor/whellscroll"

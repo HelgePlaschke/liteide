@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -25,12 +25,15 @@
 #define FILEMANAGER_H
 
 #include "liteapi/liteapi.h"
+#include <QModelIndex>
 
 using namespace LiteApi;
 
 class QFileSystemWatcher;
 class NewFileDialog;
-class FileSystemWidget;
+class FolderListView;
+
+
 class FileManager : public IFileManager
 {
     Q_OBJECT
@@ -41,7 +44,7 @@ public:
 public:
     virtual void execFileWizard(const QString &projPath, const QString &filePath, const QString &gopath = QString());
     virtual bool openFile(const QString &fileName);
-    virtual IEditor *openEditor(const QString &fileName, bool bActive = true);
+    virtual IEditor *openEditor(const QString &fileName, bool bActive = true, bool ignoreNavigationHistory = false);
     virtual IEditor *createEditor(const QString &contents, const QString &mimeType);
     virtual IEditor *createEditor(const QString &fileName);
     virtual IProject *openProject(const QString &fileName);
@@ -52,15 +55,16 @@ public:
     virtual void removeRecentFile(const QString &fileName, const QString &scheme);
     virtual QStringList recentFiles(const QString &scheme) const;
     virtual bool findProjectTargetInfo(const QString &fileName, QMap<QString,QString>& targetInfo) const;
-    virtual IApplication* openFolderEx(const QString &folder);
+    //virtual IApplication* openFolderEx(const QString &folder);
     virtual QStringList folderList() const;
     virtual void setFolderList(const QStringList &folders);
-    virtual void addFolder(const QString &folder);
+    virtual void addFolderList(const QString &folder);
     virtual IApplication* openFolderInNewWindow(const QString &folder);
 public:
     QString openAllTypeFilter() const;
     QString openProjectTypeFilter() const;
     QString openEditorTypeFilter() const;
+    bool isShowHideFiles() const;
 protected:
     QString schemeKey(const QString &scheme) const;
 	QString schemeName(const QString &scheme) const;
@@ -85,13 +89,15 @@ public slots:
     void cleanRecent();
     void applyOption(QString);
     void showHideFiles(bool);
+    void activatedFolderView(const QModelIndex &index);
 protected:
     NewFileDialog        *m_newFileDialog;
-    FileSystemWidget     *m_folderWidget;
+    FolderListView     *m_folderListView;
     QFileSystemWatcher   *m_fileWatcher;
     QMap<QString,QDateTime> m_fileStateMap;
     QStringList          m_changedFiles;
     bool                 m_checkActivated;
+    bool                 m_fileWatcherAutoReload;
     QAction              *m_recentSeparator;
     QMap<QString,QMenu*> m_schemeMenuMap;
     int         m_maxRecentFiles;

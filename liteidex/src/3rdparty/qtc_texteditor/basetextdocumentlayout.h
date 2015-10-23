@@ -37,6 +37,7 @@
 #include "texteditor_global.h"
 
 #include "itexteditor.h"
+#include "tabsettings.h"
 
 #include <QTextBlockUserData>
 #include <QPlainTextDocumentLayout>
@@ -45,6 +46,13 @@ namespace TextEditor {
 
 struct Parenthesis;
 typedef QVector<Parenthesis> Parentheses;
+
+struct SyntaxToken
+{
+    int offset;
+    int count;
+    int id;
+};
 
 struct TEXTEDITOR_EXPORT Parenthesis
 {
@@ -139,7 +147,8 @@ public:
 
     CodeFormatterData *codeFormatterData() const { return m_codeFormatterData; }
     void setCodeFormatterData(CodeFormatterData *data);
-
+    void setTokens(const QList<SyntaxToken> &tokens) {m_tokens = tokens; }
+    QList<SyntaxToken> tokens() const { return m_tokens; }
 private:
     TextMarks m_marks;
     uint m_folded : 1;
@@ -151,6 +160,7 @@ private:
     uint m_findExpressionMark:1;
     Parentheses m_parentheses;
     QMap<int,bool> m_spellCheckZones;
+    QList<SyntaxToken> m_tokens;
     CodeFormatterData *m_codeFormatterData;
 };
 
@@ -195,17 +205,33 @@ public:
         return data;
     }
 
+    class TEXTEDITOR_EXPORT FoldValidator
+    {
+    public:
+        FoldValidator();
 
+        void setup(BaseTextDocumentLayout *layout);
+        void reset();
+        void process(QTextBlock block);
+        void finalize();
+        bool requestDocUpdate() const { return m_requestDocUpdate; }
+    private:
+        BaseTextDocumentLayout *m_layout;
+        bool m_requestDocUpdate;
+        int m_insideFold;
+    };
+
+public:
     void emitDocumentSizeChanged() { emit documentSizeChanged(documentSize()); }
+    void setRequiredWidth(int width);
+    QSizeF documentSize() const;
+public:
     int lastSaveRevision;
     bool hasMarks;
     double maxMarkWidthFactor;
 
     int m_requiredWidth;
-    void setRequiredWidth(int width);
-
-    QSizeF documentSize() const;
-
+    TabSettings m_tabSettings;
 };
 
 } // namespace TextEditor

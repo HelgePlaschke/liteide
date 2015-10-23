@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -25,7 +25,7 @@
 #define FOLDERPROJECT_H
 
 #include "liteapi/liteapi.h"
-#include "filesystem/filesystemwidget.h"
+#include "folderview/folderlistview.h"
 
 using namespace LiteApi;
 
@@ -51,7 +51,7 @@ public:
     virtual void load();
 protected:
     IApplication *m_liteApp;
-    FileSystemWidget *m_widget;
+    FolderListView *m_folderView;
 };
 
 #endif // FOLDERPROJECT_H

@@ -10,7 +10,7 @@ include (../utils/fileutil/fileutil.pri)
 include (../utils/mimetype/mimetype.pri)
 include (../utils/textoutput/textoutput.pri)
 include (../utils/extension/extension.pri)
-include (../utils/filesystem/filesystem.pri)
+include (../utils/folderview/folderview.pri)
 include (../utils/symboltreeview/symboltreeview.pri)
 include (../utils/colorstyle/colorstyle.pri)
 include (../3rdparty/elidedlabel/elidedlabel.pri)
@@ -29,7 +29,13 @@ TARGET = $$qtLibraryName(liteapp)
 
 contains(DEFINES, LITEAPP_LIBRARY) {
     TEMPLATE = lib
-    DESTDIR = $$IDE_BIN_PATH
+    win32 {
+        DESTDIR = $$IDE_APP_PATH
+    } else:macx {
+        DESTDIR = $$IDE_BIN_PATH
+    } else:linux-* {
+            DESTDIR = $$IDE_LIBRARY_PATH
+    }
 }
 
 LIBS += -L$$IDE_LIBRARY_PATH
@@ -67,7 +73,10 @@ SOURCES += main.cpp\
     folderprojectfactory.cpp \
     goproxy.cpp \
     htmlwidgetmanager.cpp \
-    textbrowserhtmlwidget.cpp
+    textbrowserhtmlwidget.cpp \
+    splitwindowstyle.cpp \
+    sidewindowstyle.cpp \
+    outputoption.cpp
 
 HEADERS  += mainwindow.h \
     liteapp.h \
@@ -95,14 +104,19 @@ HEADERS  += mainwindow.h \
     goproxy.h \
     cdrv.h \
     htmlwidgetmanager.h \
-    textbrowserhtmlwidget.h
+    textbrowserhtmlwidget.h \
+    windowstyle.h \
+    splitwindowstyle.h \
+    sidewindowstyle.h \
+    outputoption.h
 
 FORMS += \
     aboutdialog.ui \
     pluginsdialog.ui \
     newfiledialog.ui \
     optionswidget.ui \
-    liteappoption.ui
+    liteappoption.ui \
+    outputoption.ui
 
 RESOURCES += \
     liteapp.qrc

@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -32,7 +32,6 @@ class QLineEdit;
 class QCheckBox;
 class QPushButton;
 class QLabel;
-
 struct FindOption : public LiteApi::FindOption
 {
     QString replaceText;

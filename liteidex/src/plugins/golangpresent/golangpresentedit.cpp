@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -107,7 +107,7 @@ GolangPresentEdit::GolangPresentEdit(LiteApi::IApplication *app, LiteApi::IEdito
     connect(verify,SIGNAL(triggered()),this,SLOT(verify()));
     //connect(exportPdf,SIGNAL(triggered()),this,SLOT(exportPdf()));
 
-    QToolBar *toolBar = LiteApi::findExtensionObject<QToolBar*>(editor,"LiteApi.QToolBar");
+    QToolBar *toolBar = LiteApi::getEditToolBar(editor);
     if (toolBar) {
         toolBar->addSeparator();
         toolBar->addAction(s1);
@@ -239,7 +239,7 @@ void GolangPresentEdit::extOutput(const QByteArray &data, bool bError)
             int line = re.cap(2).toInt(&ok);
             if (ok) {
                 QString errmsg = re.cap(0)+"\n"+msg.mid(re.cap(0).length()).trimmed();
-                m_editor->insertNavigateMark(line-1,LiteApi::EditorNavigateError,errmsg);
+                m_editor->insertNavigateMark(line-1,LiteApi::EditorNavigateError,errmsg, GOPRESENT_TAG);
                 m_errorMsg.append(errmsg);
             }
         } else {
@@ -293,11 +293,17 @@ void GolangPresentEdit::extFinish(bool error, int code, QString /*msg*/)
             QDir dir(exportInfo.absolutePath());
             dir.mkdir("static");
             dir.mkdir("js");
-            FileUtil::CopyDirectory(m_liteApp->resourcePath()+"/gopresent/static",dir.path()+"/static");
-            FileUtil::CopyDirectory(m_liteApp->resourcePath()+"/gopresent/js",dir.path()+"/js");
+            FileUtil::CopyDirectory(m_liteApp->resourcePath()+"/packages/gopresent/static",dir.path()+"/static");
+            FileUtil::CopyDirectory(m_liteApp->resourcePath()+"/packages/gopresent/js",dir.path()+"/js");
             m_liteApp->appendLog("GoPresent","export "+exportInfo.filePath(),false);
             if (dlg.isExportAndView()) {
-                QDesktopServices::openUrl(QUrl::fromLocalFile(exportInfo.filePath()));
+                LiteApi::IWebKitBrowser *browser = LiteApi::getWebKitBrowser(m_liteApp);
+                if (browser) {
+                    m_liteApp->editorManager()->activeBrowser(browser);
+                    browser->openUrl(QUrl::fromLocalFile(exportInfo.filePath()));
+                } else {
+                    QDesktopServices::openUrl(QUrl::fromLocalFile(exportInfo.filePath()));
+                }
             }
         } else if (exportType == EXPORT_TYPE_PDF) {
             QString init = QFileInfo(m_editor->filePath()).absolutePath()+"/"+QFileInfo(m_editor->filePath()).completeBaseName()+".pdf";
@@ -309,7 +315,7 @@ void GolangPresentEdit::extFinish(bool error, int code, QString /*msg*/)
                 m_htmldoc = m_liteApp->htmlWidgetManager()->createDocument(this);
                 connect(m_htmldoc,SIGNAL(loadFinished(bool)),this,SLOT(loadHtmlFinished(bool)));
             }
-            QUrl url = QUrl::fromLocalFile(m_liteApp->resourcePath()+"/gopresent/export.html");
+            QUrl url = QUrl::fromLocalFile(m_liteApp->resourcePath()+"/packages/gopresent/export.html");
             m_htmldoc->setHtml(QString::fromUtf8(m_exportData),url);
         }
     }
@@ -334,11 +340,7 @@ void GolangPresentEdit::loadHtmlFinished(bool b)
 bool GolangPresentEdit::startExportHtmlDoc(EXPORT_TYPE type)
 {
     m_liteApp->editorManager()->saveEditor(m_editor);
-    QString cmd = FileUtil::lookupLiteBin("gopresent",m_liteApp);
-    if (cmd.isEmpty()) {
-        m_liteApp->appendLog("GolangPresent","Not find gopresent",true);
-        return false;
-    }
+    QString cmd = LiteApi::getGotools(m_liteApp);
     QFileInfo info(m_editor->filePath());
     if (!m_process) {
         m_process = new ProcessEx(this);
@@ -355,11 +357,11 @@ bool GolangPresentEdit::startExportHtmlDoc(EXPORT_TYPE type)
     m_exportData.clear();
     m_errorMsg.clear();
     m_process->setUserData(0,type);
-    m_editor->clearAllNavigateMark(LiteApi::EditorNavigateBad);
+    m_editor->clearAllNavigateMark(LiteApi::EditorNavigateBad, GOPRESENT_TAG);
     if (type == EXPORT_TYPE_VERIFY) {
-        m_process->startEx(cmd,"-v -i "+info.fileName().toUtf8());
+        m_process->startEx(cmd,"gopresent -v -i "+info.fileName().toUtf8());
     } else {
-        m_process->startEx(cmd,"-stdout -i "+info.fileName().toUtf8());
+        m_process->startEx(cmd,"gopresent -stdout -i "+info.fileName().toUtf8());
     }
     return true;
 }

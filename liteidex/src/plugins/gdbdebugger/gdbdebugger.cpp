@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -210,16 +210,18 @@ bool GdbDebugger::start(const QString &program, const QString &arguments)
         argsListInfo << arguments;
     }
 
-    QString gdb = env.value("LITEIDE_GDB","gdb");
-#ifdef Q_OS_WIN
+    QString gdb = env.value("LITEIDE_GDB","");
     if (gdb.isEmpty()) {
+#ifdef Q_OS_WIN
         if (env.value("GOARCH") == "386") {
             gdb = "gdb";
         } else {
             gdb = "gdb64";
         }
-    }
+#else
+        gdb = "gdb";
 #endif
+    }
 
     m_gdbFilePath = FileUtil::lookPath(gdb,env,true);
     if (m_gdbFilePath.isEmpty()) {
@@ -339,6 +341,21 @@ void GdbDebugger::removeWatchByName(const QString &name, bool children)
     cmd.insert("name",name);
     cmd.insert("children",children);
     command(cmd);
+}
+
+void GdbDebugger::showFrame(QModelIndex index)
+{
+    QStandardItem* file = m_framesModel->item( index.row(), 3 );
+    QStandardItem* line = m_framesModel->item( index.row(), 4 );
+    if( !file || !line ) {
+        return;
+    }
+    QString filename = file->text();
+    int lineno = line->text().toInt();
+    if( lineno <= 0 ) {
+        return;
+    }
+    emit setCurrentLine( filename, lineno - 1 );
 }
 
 void GdbDebugger::expandItem(QModelIndex index, LiteApi::DEBUG_MODEL_TYPE type)
@@ -638,7 +655,7 @@ void GdbDebugger::handleStopped(const GdbMiValue &result)
             //file="C:/Users/ADMINI~1/AppData/Local/Temp/2/bindist308287094/go/src/pkg/fmt/print.go"
             int i = file.indexOf("/go/src/pkg");
             if (i > 0) {
-                QString fullname = LiteApi::getGoroot(m_liteApp)+file.right(file.length()-i-3);
+                QString fullname = LiteApi::getGOROOT(m_liteApp)+file.right(file.length()-i-3);
                 emit setCurrentLine(fullname,line.toInt()-1);
             }
         }
@@ -1058,7 +1075,7 @@ void GdbDebugger::initGdb()
     command("set auto-solib-add on");
     if (!m_runtimeFilePath.isEmpty()) {
 #ifdef Q_OS_WIN
-        QStringList pathList = LiteApi::getGopathList(m_liteApp,false);
+        QStringList pathList = LiteApi::getGOPATH(m_liteApp,false);
         QString paths;
         foreach(QString path, pathList) {
             paths += QDir::fromNativeSeparators(path)+"/src";

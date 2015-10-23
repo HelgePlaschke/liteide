@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -26,7 +26,7 @@
 
 #include "liteapp_global.h"
 
-typedef void (*DRV_CALLBACK)(char *id, char *reply, int len, int err, void *ctx);
+typedef void (*DRV_CALLBACK)(char *id, int id_size, char *reply, int len, int err, void *ctx);
 typedef int (*GODRV_CALL)(char* id,int id_size, char* args, int args_size, DRV_CALLBACK cb, void *ctx);
 
 extern "C"

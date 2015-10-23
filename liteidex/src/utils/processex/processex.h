@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -26,6 +26,21 @@
 
 #include <QProcess>
 #include <QVariant>
+
+class Process : public QProcess
+{
+    Q_OBJECT
+public:
+    Process(QObject *parent);
+    bool isRunning() const;
+    void startEx(const QString &cmd, const QString &args);
+    static bool startDetachedEx(const QString& cmd, const QStringList &args);
+public:
+    void setUserData(int id, const QVariant &data);
+    QVariant userData(int id) const;
+protected:
+    QMap<int,QVariant> m_idVarMap;
+};
 
 class ProcessEx : public QProcess
 {

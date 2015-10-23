@@ -11,6 +11,9 @@
 *.dylib
 *.7z
 
+#Emacs
+*~
+
 # Qt-es
 
 *.pro.user
@@ -25,9 +28,8 @@ Makefile
 
 #liteide
 *.exe
-build*
 liteidex/bin
 liteidex/liteide
-liteidex/src/code.google.com
 liteidex/src/github.com
+liteidex/src/golang.org/
 

@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -145,7 +145,7 @@ void NewFileDialog::accept()
     QDate dt = QDate::currentDate();
     QTime tm = QTime::currentTime();
     m_stringMap.insert("$DATE$", QString("%1 %2 %3").arg(dt.day()).arg(shortMonthNames[dt.month()-1]).arg(dt.year()));
-    m_stringMap.insert("$DATETIME$",QString("%1:%2 %3 %4 %5").arg(tm.hour()).arg(tm.second()).arg(dt.day()).arg(shortMonthNames[dt.month()-1]).arg(dt.year()));
+    m_stringMap.insert("$DATETIME$",QString("%1 %2 %3 %4").arg(tm.toString("hh:mm")).arg(dt.day()).arg(shortMonthNames[dt.month()-1]).arg(dt.year()));
     m_openFiles.clear();
 
     m_openPath = location;

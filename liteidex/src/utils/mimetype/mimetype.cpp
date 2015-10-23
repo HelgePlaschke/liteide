@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -37,6 +37,11 @@
 #endif
 //lite_memory_check_end
 
+
+QString MimeType::package() const
+{
+    return m_package;
+}
 
 QString MimeType::type() const
 {
@@ -82,10 +87,17 @@ void MimeType::merge(const IMimeType *mimeType)
     if (!mimeType->scheme().isEmpty()) {
         m_scheme = mimeType->scheme();
     }
-
+    if (!mimeType->package().isEmpty()) {
+        m_package = mimeType->package();
+    }
     m_subClassesOf.removeDuplicates();
     m_globPatterns.removeDuplicates();
     m_comment.removeDuplicates();
+}
+
+void MimeType::setPackage(const QString &package)
+{
+    m_package = package;
 }
 
 void MimeType::setType(const QString &type)
@@ -158,6 +170,7 @@ bool MimeType::loadMimeTypes(LiteApi::IMimeTypeManager *manager, QIODevice *dev,
             if (reader.name() == "mime-type" && mimeType == 0) {
                 mimeType = new MimeType;
                 mimeType->setType(attrs.value("type").toString());
+                mimeType->setPackage(attrs.value("package").toString());
                 mimeType->setCodec(attrs.value("codec").toString());
                 mimeType->setScheme(attrs.value("scheme").toString());
             } else if (reader.name() == "sub-class-of" && mimeType) {

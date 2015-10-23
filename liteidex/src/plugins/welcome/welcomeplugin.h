@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -38,12 +38,14 @@ public:
     virtual bool load(LiteApi::IApplication *app);
 protected slots:
     void home();
+    void godoc();
 protected:
     LiteApi::IApplication *m_liteApp;
     WelcomeBrowser *m_welcome;
     LiteDoc *m_liteDoc;
     QAction *m_welcomeAct;
     QAction *m_homeAct;
+    //QAction *m_godocAct;
 };
 
 class PluginFactory : public LiteApi::PluginFactoryT<WelcomePlugin>
@@ -57,8 +59,8 @@ public:
     PluginFactory() {
         m_info->setId("plugin/welcome");
         m_info->setName("Welcome");
-        m_info->setAnchor("visualfc");
-        m_info->setVer("x20");
+        m_info->setAuthor("visualfc");
+        m_info->setVer("X25.2");
         m_info->setInfo("Welcome");
     }
 };

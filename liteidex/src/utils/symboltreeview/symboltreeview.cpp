@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -73,27 +73,28 @@ static QModelIndex indexFromStringList(QAbstractItemModel *model, QStringList &l
 SymbolTreeView::SymbolTreeView(QWidget *parent)
     : QTreeView(parent)
 {
+    m_bClickedItem = false;
+    m_hsbPos = 0;
     setEditTriggers(QAbstractItemView::NoEditTriggers);
    // setFrameStyle(QFrame::NoFrame);
     setIndentation(indentation() * 9/10);
     {
-        QHeaderView *treeHeader = header();
-        treeHeader->setVisible(false);
-#if QT_VERSION >= 0x050000
-        treeHeader->setSectionResizeMode(QHeaderView::Stretch);
-#else
-        treeHeader->setResizeMode(QHeaderView::Stretch);
-#endif
-        treeHeader->setStretchLastSection(true);
+        this->setHeaderHidden(true);
+    #if QT_VERSION >= 0x050000
+        this->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    #else
+        this->header()->setResizeMode(QHeaderView::ResizeToContents);
+    #endif
+        this->header()->setStretchLastSection(false);
+        this->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     }
     setContextMenuPolicy(Qt::CustomContextMenu);
     setUniformRowHeights(true);
     setTextElideMode(Qt::ElideNone);
 //        setExpandsOnDoubleClick(false);
     setAttribute(Qt::WA_MacShowFocusRect, false);
-
-    connect(this, SIGNAL(collapsed(QModelIndex)), this, SLOT(collapsedTree(QModelIndex)));
-    connect(this, SIGNAL(expanded(QModelIndex)), this, SLOT(expandedTree(QModelIndex)));
+    connect(this,SIGNAL(clicked(QModelIndex)),this,SLOT(clickedItem(QModelIndex)));
+    connect(this->horizontalScrollBar(),SIGNAL(valueChanged(int)),this,SLOT(hsbValueChanged(int)));
 }
 
 void SymbolTreeView::focusInEvent(QFocusEvent *event)
@@ -127,32 +128,43 @@ QModelIndex SymbolTreeView::topViewIndex()
     return indexAt(QPoint(1,1));
 }
 
-void SymbolTreeView::expandedTree(const QModelIndex &index)
-{
-    m_expandIndexs.insert(index);
-}
-
-void SymbolTreeView::collapsedTree(const QModelIndex &index)
-{
-    m_expandIndexs.remove(index);
-}
-
 void SymbolTreeView::reset()
 {
     QTreeView::reset();
     //setRootIndex(model()->index(0,0));
     //this->setRootIndex(QModelIndex());
-    m_expandIndexs.clear();
 }
 
-const QSet<QModelIndex> & SymbolTreeView::expandIndexs() const
+void SymbolTreeView::getTreeExpands(const QModelIndex &parent, QList<QModelIndex> &list) const
 {
-    return m_expandIndexs;
+    for (int i = 0; i < this->model()->rowCount(parent); i++) {
+        QModelIndex index = this->model()->index(i,0,parent);
+        if (this->isExpanded(index)) {
+            list.append(index);
+            getTreeExpands(index,list);
+        }
+    }
 }
 
-QSet<QModelIndex> & SymbolTreeView::expandIndexs()
+void SymbolTreeView::clickedItem(QModelIndex)
 {
-    return m_expandIndexs;
+    this->m_bClickedItem = true;
+    this->m_hsbPos = this->horizontalScrollBar()->sliderPosition();
+}
+
+void SymbolTreeView::hsbValueChanged(int)
+{
+    if (this->m_bClickedItem) {
+        this->m_bClickedItem = false;
+        this->horizontalScrollBar()->setValue(this->m_hsbPos);
+    }
+}
+
+QList<QModelIndex> SymbolTreeView::expandIndexs() const
+{
+    QList<QModelIndex> expands;
+    getTreeExpands(QModelIndex(),expands);
+    return expands;
 }
 
 void SymbolTreeView::currentChanged(const QModelIndex &current, const QModelIndex &previous)
@@ -167,20 +179,20 @@ void SymbolTreeView::saveState(SymbolTreeState *state)
         return;
     }
     state->expands.clear();
-    QSetIterator<QModelIndex> i(this->expandIndexs());
-    while (i.hasNext()) {
-        state->expands.append(stringListFromIndex(i.next()));
+
+    foreach (QModelIndex index, this->expandIndexs()) {
+        state->expands.append(stringListFromIndex(index));
     }
+
     state->cur = stringListFromIndex(this->currentIndex());
     state->vbar = verticalScrollBar()->value();
     state->hbar = horizontalScrollBar()->value();
-
 }
 
 void SymbolTreeView::loadState(QAbstractItemModel *model,SymbolTreeState *state)
 {
     //load state
-    this->expandToDepth(0);
+    //this->expandToDepth(0);
 
     QListIterator<QStringList> ie(state->expands);
     while (ie.hasNext()) {

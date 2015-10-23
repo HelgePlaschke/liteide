@@ -19,14 +19,12 @@ fi
 
 echo update liteide tools ...
 cd $LITEIDE_ROOT
-export GOPATH=$PWD
+export GOPATH=$PWD:$GOPATH
 
-echo get goimports ...
-go get -v -u "github.com/visualfc/goimports"
 echo get gocode ...
-go get -v -u "github.com/nsf/gocode"
-echo get gopm ...
-go get -v -u "github.com/gpmgo/gopm"
+go get -v -u -ldflags "-s" "github.com/nsf/gocode"
+echo get gotools ...
+go get -v -u -ldflags "-s" "github.com/visualfc/gotools"
 
 if [ $? -ge 1 ]; then
 	echo 'error, go install fail'

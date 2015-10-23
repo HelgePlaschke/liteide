@@ -2,10 +2,17 @@
 
 # LiteIDE 功能手册
 
-## 多窗口模式设置
-LiteIDE允许设置总是在新窗口打开目录
+## 如何支持低版本Go1.1和Go1.2
+LiteIDE的编译设置使用了-i编译参数。如果使用Go1.1或Go1.2则不支持此参数。选项->查看->LiteBuild 双击gosrc.xml进行编辑。修改BUILDARGS默认设置：
 
-选项->查看->LiteApp-> 总是在新窗口打开目录。
+	<custom id="BuildArgsi" name="BUILDARGS" value="-i"/>
+	
+将value设置为空存盘重启LiteIDE即可支持Go1.1和Go1.2。
+
+## 窗口样式设置
+LiteIDE目前有两种窗口样式分离式和侧边栏式。
+
+选项->查看->LiteApp-> 窗口样式。
 
 
 ## 环境设置
@@ -129,7 +136,7 @@ LiteIDE环境设置插件可以让你快速设置切换多个系统环境，以�
 ## Go语言代码格式化
 存盘时自动格式化	
 
-### Goimports
+### Goimports样式格式化
 LiteIDE 查看->选项->GolangFmt-> 使用Goimports代替gofmt进行代码格式化
 
 这个工具自动更新您的Go语言import行，增加缺少的pkg和移除未引用的pkg。
@@ -196,9 +203,6 @@ LiteIDE的编译系统是高度可配置的，可使用XML文件自定义生成�
 		</mime-type>
 	</mime-info>
 
-## Gocode
-Gocode提供Go语言的自动完成功能。
-
 ## Go文档查看
 
 LiteIDE可使用godoc来输出需要Go文档并浏览。可以查看标准包文档或自定义包文档。打开使用`查看> Godoc文档查看`可以查看关于此的更多细节。
@@ -214,7 +218,7 @@ LiteIDE可使用godoc来输出需要Go文档并浏览。可以查看标准包文
 The above example will replace all instances of `Colour` with `Color`.
 上面的例子将取代`Colour`为`Color`
 
-文件系统的搜索功能可通过 `查找 > 文件搜索`实现.
+文件系统的搜索功能可通过 `查找 -> 文件搜索`实现.
 
 ## 调试
 LiteIDE调试Go语言需要安装GDB(Windows上可使用MinGW).
@@ -222,7 +226,7 @@ LiteIDE调试Go语言需要安装GDB(Windows上可使用MinGW).
 环境变量`LITEIDE_GDB`可指定使用哪一个gdb来执行调试。在Windows平台上，32位环境使用`gdb.exe`而64位环境默认使用`gdb64.exe`。在环境配置文件中可对这个环境变量进行手工配置。
 
 ## 键盘映射
-您可以修改用于LiteIDE所有的功能快捷键。打开 `查看 > 选择 > LiteApp > 键盘` 并修改快捷键。双击该快捷键列表进行编辑，然后按'应用'以执行更改。
+您可以修改用于LiteIDE所有的功能快捷键。打开 `查看 -> 选项 -> LiteApp -> 键盘` 并修改快捷键。双击该快捷键列表进行编辑，然后按'应用'以执行更改。
 
 快捷键必须遵循特定的格式。快捷键通常可以使用逗号（`，`）分隔，即按顺序按下对应的快捷键以启动功能。而定义支持多个快捷键则用分号（';'）进行分隔。
 

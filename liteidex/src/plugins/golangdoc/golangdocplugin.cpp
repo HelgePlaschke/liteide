@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -49,8 +49,7 @@ GolangDocPlugin::~GolangDocPlugin()
 bool GolangDocPlugin::load(LiteApi::IApplication *app)
 {
     m_golangDoc = new GolangDoc(app,this);
-    app->optionManager()->addFactory(new GolangDocOptionFactory(app,this));
-
+    //app->optionManager()->addFactory(new GolangDocOptionFactory(app,this));
     return true;
 }
 
@@ -61,3 +60,4 @@ void GolangDocPlugin::currentEditorChanged(LiteApi::IEditor*)
 #if QT_VERSION < 0x050000
 Q_EXPORT_PLUGIN2(PluginFactory,PluginFactory)
 #endif
+

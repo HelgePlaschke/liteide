@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -52,17 +52,24 @@ public slots:
     bool filterModel(QString filter, QModelIndex parent, QModelIndex &first);
     void clearFilter(QModelIndex parent);
     void filterChanged(QString);
-signals:
+    void treeContextMenuRequested(QPoint);
+    void gotoDefinition();
+    void viewImportDoc();
     void doubleClicked(QModelIndex);
 protected:
+    void gotoItemDefinition(GolangAstItem *item);
     bool                m_bOutline;
-    bool                m_bFirst;
+    bool                m_bFirst;    
     SymbolTreeView     *m_tree;
     Utils::FilterLineEdit *m_filterEdit;
     QStandardItemModel *m_model;
     QSortFilterProxyModel *proxyModel;
     LiteApi::IApplication *m_liteApp;
-    QString m_workPath;
+    QAction             *m_gotoPosAct;
+    QAction             *m_importDocAct;
+    QMenu               *m_contextMenu;
+    GolangAstItem       *m_contextItem;
+    QString             m_workPath;
 };
 
 #endif // ASTWIDGET_H

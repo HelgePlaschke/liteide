@@ -40,7 +40,7 @@
 ****************************************************************************/
 
 #include "syntaxhighlighter.h"
-
+#include "basetextdocumentlayout.h"
 #include <qtextdocument.h>
 #include <qtextlayout.h>
 #include <qpointer.h>
@@ -87,6 +87,8 @@ public:
     void applyFormatChanges(int from, int charsRemoved, int charsAdded);
     QVector<QTextCharFormat> formatChanges;
     QTextBlock currentBlock;
+    QList<SyntaxToken> tokens;
+    SyntaxComment comment;
     bool rehighlightPending;
     bool inReformatBlocks;
 };
@@ -224,12 +226,64 @@ void SyntaxHighlighterPrivate::reformatBlock(const QTextBlock &block, int from, 
     Q_ASSERT_X(!currentBlock.isValid(), "SyntaxHighlighter::reformatBlock()", "reFormatBlock() called recursively");
 
     currentBlock = block;
-
+    tokens.clear();
     formatChanges.fill(QTextCharFormat(), block.length() - 1);
     q->highlightBlock(block.text());
+
+    BaseTextDocumentLayout::userData(block)->setTokens(tokens);
+    BaseTextDocumentLayout::setLexerState(block,q->currentBlockState());
+
     applyFormatChanges(from, charsRemoved, charsAdded);
 
     currentBlock = QTextBlock();
+}
+
+const SyntaxHighlighter::KateFormatMap SyntaxHighlighter::m_kateFormats;
+
+SyntaxHighlighter::KateFormatMap::KateFormatMap()
+{
+    m_ids.insert(QLatin1String("dsNormal"), SyntaxHighlighter::Normal);
+    m_ids.insert(QLatin1String("dsKeyword"), SyntaxHighlighter::Keyword);
+    m_ids.insert(QLatin1String("dsDataType"), SyntaxHighlighter::DataType);
+    m_ids.insert(QLatin1String("dsDecVal"), SyntaxHighlighter::Decimal);
+    m_ids.insert(QLatin1String("dsBaseN"), SyntaxHighlighter::BaseN);
+    m_ids.insert(QLatin1String("dsFloat"), SyntaxHighlighter::Float);
+    m_ids.insert(QLatin1String("dsChar"), SyntaxHighlighter::Char);
+    m_ids.insert(QLatin1String("dsString"), SyntaxHighlighter::String);
+    m_ids.insert(QLatin1String("dsComment"), SyntaxHighlighter::Comment);
+    m_ids.insert(QLatin1String("dsOthers"), SyntaxHighlighter::Others);
+    m_ids.insert(QLatin1String("dsAlert"), SyntaxHighlighter::Alert);
+    m_ids.insert(QLatin1String("dsFunction"), SyntaxHighlighter::Function);
+    m_ids.insert(QLatin1String("dsRegionMarker"), SyntaxHighlighter::RegionMarker);
+    m_ids.insert(QLatin1String("dsError"), SyntaxHighlighter::Error);
+    m_ids.insert(QLatin1String("dsSymbol"),SyntaxHighlighter::Symbol);
+    m_ids.insert(QLatin1String("dsBuiltinFunc"), SyntaxHighlighter::BuiltinFunc);
+    m_ids.insert(QLatin1String("dsPredeclared"), SyntaxHighlighter::Predeclared);
+    m_ids.insert(QLatin1String("dsFuncDecl"), SyntaxHighlighter::FuncDecl);
+    m_ids.insert(QLatin1String("dsPlaceholder"), SyntaxHighlighter::Placeholder);
+    m_ids.insert(QLatin1String("dsToDo"), SyntaxHighlighter::ToDo);
+    m_ids.insert(QLatin1String("dsPreprocessorFormat"),SyntaxHighlighter::PreprocessorFormat);
+}
+
+void SyntaxHighlighter::configureFormat(TextFormatId id, const QTextCharFormat &format)
+{
+    m_creatorFormats[id] = format;
+}
+
+void SyntaxHighlighter::setTabSize(int /*tabSize*/)
+{
+}
+
+SyntaxComment SyntaxHighlighter::comment() const
+{
+    Q_D(const SyntaxHighlighter);
+    return d->comment;
+}
+
+void SyntaxHighlighter::setupComment(const SyntaxComment &comment)
+{
+    Q_D(SyntaxHighlighter);
+    d->comment = comment;
 }
 
 /*!
@@ -488,7 +542,7 @@ void SyntaxHighlighter::rehighlightBlock(const QTextBlock &block)
 
     \sa format(), highlightBlock()
 */
-void SyntaxHighlighter::setFormat(int start, int count, const QTextCharFormat &format)
+void SyntaxHighlighter::setFormat(int start, int count, const QTextCharFormat &format, int id)
 {
     Q_D(SyntaxHighlighter);
     if (start < 0 || start >= d->formatChanges.count())
@@ -497,6 +551,23 @@ void SyntaxHighlighter::setFormat(int start, int count, const QTextCharFormat &f
     const int end = qMin(start + count, d->formatChanges.count());
     for (int i = start; i < end; ++i)
         d->formatChanges[i] = format;
+
+    if (id >= Normal) {
+        int offset = start;
+        int count = end-start;
+        if (!d->tokens.empty()) {
+            SyntaxToken &last = d->tokens.last();
+            if ((last.id == id) && (last.offset+last.count == offset)) {
+                last.count += count;
+                return;
+            }
+        }
+        SyntaxToken token;
+        token.offset = offset;
+        token.count = count;
+        token.id = id;
+        d->tokens.append(token);
+    }
 }
 
 /*!
@@ -510,12 +581,12 @@ void SyntaxHighlighter::setFormat(int start, int count, const QTextCharFormat &f
 
     \sa format(), highlightBlock()
 */
-void SyntaxHighlighter::setFormat(int start, int count, const QColor &color)
-{
-    QTextCharFormat format;
-    format.setForeground(color);
-    setFormat(start, count, format);
-}
+//void SyntaxHighlighter::setFormat(int start, int count, const QColor &color)
+//{
+//    QTextCharFormat format;
+//    format.setForeground(color);
+//    setFormat(start, count, format);
+//}
 
 /*!
     \overload
@@ -528,12 +599,12 @@ void SyntaxHighlighter::setFormat(int start, int count, const QColor &color)
 
     \sa format(), highlightBlock()
 */
-void SyntaxHighlighter::setFormat(int start, int count, const QFont &font)
-{
-    QTextCharFormat format;
-    format.setFont(font);
-    setFormat(start, count, format);
-}
+//void SyntaxHighlighter::setFormat(int start, int count, const QFont &font)
+//{
+//    QTextCharFormat format;
+//    format.setFont(font);
+//    setFormat(start, count, format);
+//}
 
 void SyntaxHighlighter::applyFormatToSpaces(const QString &text, const QTextCharFormat &format)
 {

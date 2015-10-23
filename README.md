@@ -3,13 +3,14 @@
 LiteIDE X
 =========
 
+![liteide-logo](liteidex/liteide-logo/liteide.png)
+
 ### Introduction
 
 _LiteIDE is a simple, open source, cross-platform Go IDE._
 
-* Version: X20.1
+* Version: X27.2.1
 * Author: [visualfc](mailto:visualfc@gmail.com)
-
 
 ### Features
 * Core features
@@ -26,30 +27,36 @@ _LiteIDE is a simple, open source, cross-platform Go IDE._
 	* Document browser
 	* [Gocode](https://github.com/nsf/gocode) support
 	* GOPATH API index
-	* Jump to declaration
-	* Code expression info
-	* Go playground
-* Markdown support
-	* Live preview and synchronized scroll
-	* Custom CSS with themes from [Mou](http://mouapp.com) 
-	* Export Markdown as HTML or PDF
-	* Markdown batch conversion with optional merging
-* Golang Present support
-	* Present syntax editor
-	* Auto verify at save time
-	* Export to html	
+	* Code Navigation 
+	* Find Usages
+	* Code Refactor
+	* Go playground	
+* Additional support
+	* Markdown 
+	* Json
+	* Golang Present
 
 ### Supported Systems
 * Windows x86 (32-bit or 64-bit) 
 * Linux x86 (32-bit or 64-bit)
-* MacOS X10.6
+* MacOS X10.6 or higher (64-bit)
+* OpenBSD 5.6 or higher (64-bit)
 
 ### Website
-* Source code
-	* <https://github.com/visualfc/liteide>
+* LiteIDE Source code
+<https://github.com/visualfc/liteide>
+* Gotools Source code
+<https://github.com/visualfc/gotools>
 * Binary downloads 
-	* <https://code.google.com/p/golangide>
+<http://sourceforge.net/projects/liteide/files>
 * Google group
-	* <https://groups.google.com/group/liteide-dev>
-* Support LiteIDE
-	* <http://visualfc.github.com/support>
+<https://groups.google.com/group/liteide-dev>
+* How to Install
+<https://github.com/visualfc/liteide/blob/master/liteidex/deploy/welcome/en/install.md>
+* FAQ
+<https://github.com/visualfc/liteide/blob/master/liteidex/deploy/welcome/en/guide.md>
+* Changes
+<https://github.com/visualfc/liteide/blob/master/liteidex/deploy/welcome/en/changes.md>
+
+### Donate
+* <http://visualfc.github.com/support>

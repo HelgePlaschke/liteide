@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -72,6 +72,19 @@ IMimeType *MimeTypeManager::findMimeType(const QString &type) const
         }
     }
     return 0;
+}
+
+QString MimeTypeManager::findPackageByMimeType(const QString &type) const
+{
+    if (type.isEmpty()) {
+        return QString();
+    }
+    foreach(IMimeType *mimeType, m_mimeTypeList) {
+        if (mimeType->type() == type) {
+            return mimeType->package();
+        }
+    }
+    return QString();
 }
 
 QString MimeTypeManager::findMimeTypeByFile(const QString &fileName) const

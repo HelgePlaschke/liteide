@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -29,6 +29,8 @@
 #include "liteeditor_global.h"
 #include "colorstyle/colorstyle.h"
 #include "qtc_texteditor/generichighlighter/highlighter.h"
+#include "qtc_editutil/uncommentselection.h"
+#include "functiontooltip.h"
 
 #include <QFileInfo>
 #include <QVBoxLayout>
@@ -77,17 +79,18 @@ LiteEditor::LiteEditor(LiteApi::IApplication *app)
     : m_liteApp(app),
       m_extension(new Extension),
       m_completer(0),
+      m_funcTip(0),
       m_bReadOnly(false)
 {
+    m_syntax = 0;
     m_widget = new QWidget;
-    m_editorWidget = new LiteEditorWidget(m_widget);
+    m_editorWidget = new LiteEditorWidget(app,m_widget);
     m_editorWidget->setCursorWidth(2);
     //m_editorWidget->setAcceptDrops(false);
-
     m_defEditorPalette = m_editorWidget->palette();
 
     createActions();
-    createToolBars();
+    //createToolBars();
     createMenu();
 
     m_editorWidget->setContextMenu(m_contextMenu);
@@ -101,13 +104,12 @@ LiteEditor::LiteEditor(LiteApi::IApplication *app)
                              "QToolBar QToolButton::hover { background-color: #ababab;}"\
                              "QToolBar::separator {width:2px; margin-left:2px; margin-right:2px; background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,stop: 0 #dedede, stop: 1 #a0a0a0);}");
 */
-    QHBoxLayout *toolLayout = new QHBoxLayout;
-    toolLayout->setMargin(0);
-    toolLayout->setSpacing(0);
-    toolLayout->addWidget(m_toolBar);
-    toolLayout->addWidget(m_infoToolBar);
-
-    layout->addLayout(toolLayout);
+//    QHBoxLayout *toolLayout = new QHBoxLayout;
+//    toolLayout->setMargin(0);
+//    toolLayout->setSpacing(0);
+//    toolLayout->addWidget(m_editToolBar);
+//    //toolLayout->addWidget(m_infoToolBar);
+//    layout->addLayout(toolLayout);
 //    QHBoxLayout *hlayout = new QHBoxLayout;
 //    hlayout->addWidget(m_editorWidget);
 //    hlayout->addWidget(m_editorWidget->navigateArea());
@@ -134,26 +136,35 @@ LiteEditor::LiteEditor(LiteApi::IApplication *app)
 
     //applyOption("option/liteeditor");
 
+    LiteApi::IEditContext *editContext = new EditContext(this,this);
+
     m_extension->addObject("LiteApi.ITextEditor",this);
     m_extension->addObject("LiteApi.ILiteEditor",this);
-    m_extension->addObject("LiteApi.QToolBar",m_toolBar);
+    //m_extension->addObject("LiteApi.QToolBar.Edit",m_editToolBar);
     m_extension->addObject("LiteApi.QPlainTextEdit",m_editorWidget);
     m_extension->addObject("LiteApi.ContextMenu",m_contextMenu);
     m_extension->addObject("LiteApi.Menu.Edit",m_editMenu);
+    m_extension->addObject("LiteApi.IEditContext",editContext);
 
     m_editorWidget->installEventFilter(m_liteApp->editorManager());
     connect(m_editorWidget,SIGNAL(cursorPositionChanged()),this,SLOT(editPositionChanged()));
     connect(m_editorWidget,SIGNAL(navigationStateChanged(QByteArray)),this,SLOT(navigationStateChanged(QByteArray)));
-    connect(m_editorWidget,SIGNAL(overwriteModeChanged(bool)),m_overInfoAct,SLOT(setVisible(bool)));
+    //connect(m_editorWidget,SIGNAL(overwriteModeChanged(bool)),m_overInfoAct,SLOT(setVisible(bool)));
     connect(m_editorWidget,SIGNAL(requestFontZoom(int)),this,SLOT(requestFontZoom(int)));
-    connect(m_lineInfo,SIGNAL(doubleClickEvent()),this,SLOT(gotoLine()));
-    connect(m_closeEditorAct,SIGNAL(triggered()),m_liteApp->editorManager(),SLOT(closeEditor()));
+    connect(m_editorWidget,SIGNAL(updateLink(QTextCursor,QPoint,bool)),this,SIGNAL(updateLink(QTextCursor,QPoint,bool)));
+    //connect(m_lineInfo,SIGNAL(doubleClickEvent()),this,SLOT(gotoLine()));
+    //connect(m_closeEditorAct,SIGNAL(triggered()),m_liteApp->editorManager(),SLOT(closeEditor()));
+
+    connect(m_liteApp,SIGNAL(broadcast(QString,QString,QString)),this,SLOT(broadcast(QString,QString,QString)));
 }
 
 LiteEditor::~LiteEditor()
 {
     if (m_completer) {
         delete m_completer;
+    }
+    if (m_funcTip) {
+        delete m_funcTip;
     }
     delete m_contextMenu;
     delete m_editMenu;
@@ -163,15 +174,33 @@ LiteEditor::~LiteEditor()
     delete m_file;
 }
 
-LiteEditorWidget *LiteEditor::editorWidget() const
+QTextDocument *LiteEditor::document() const
 {
-    return m_editorWidget;
+    return m_editorWidget->document();
 }
 
 void LiteEditor::setEditorMark(LiteApi::IEditorMark *mark)
 {
     m_editorWidget->setEditorMark(mark);
     m_extension->addObject("LiteApi.IEditorMark",mark);
+}
+
+void LiteEditor::setTextLexer(LiteApi::ITextLexer *lexer)
+{
+    m_extension->addObject("LiteApi.ITextLexer",lexer);
+    m_editorWidget->setTextLexer(lexer);
+}
+
+void LiteEditor::setSyntaxHighlighter(TextEditor::SyntaxHighlighter *syntax)
+{
+    m_syntax = syntax;
+    m_extension->addObject("TextEditor::SyntaxHighlighter",syntax);
+    m_commentAct->setVisible(m_syntax && !m_syntax->comment().isEmpty());
+}
+
+TextEditor::SyntaxHighlighter *LiteEditor::syntaxHighlighter() const
+{
+    return m_syntax;
 }
 
 void LiteEditor::setCompleter(LiteApi::ICompleter *complter)
@@ -186,12 +215,12 @@ void LiteEditor::setCompleter(LiteApi::ICompleter *complter)
         return;
     }
     m_completer->setEditor(m_editorWidget);
-    m_editorWidget->setCompleter(m_completer->completer());
+    m_editorWidget->setCompleter(m_completer);
 
-    m_extension->addObject("LiteApi.ICompleter",complter);
+    m_extension->addObject("LiteApi.ICompleter",m_completer);
 
-    connect(m_editorWidget,SIGNAL(completionPrefixChanged(QString)),m_completer,SLOT(completionPrefixChanged(QString)));
-    connect(m_completer,SIGNAL(wordCompleted(QString,QString)),this,SLOT(updateTip(QString,QString)));
+    connect(m_editorWidget,SIGNAL(completionPrefixChanged(QString,bool)),m_completer,SLOT(completionPrefixChanged(QString,bool)));
+    connect(m_completer,SIGNAL(wordCompleted(QString,QString,QString)),this,SLOT(updateTip(QString,QString,QString)));
 }
 
 void LiteEditor::clipbordDataChanged()
@@ -270,14 +299,20 @@ void LiteEditor::createActions()
     m_lockAct->setEnabled(false);
 
     m_duplicateAct = new QAction(tr("Duplicate"),this);
-    actionContext->regAction(m_duplicateAct,"Duplicate","Ctrl+D");
-
+    actionContext->regAction(m_duplicateAct,"Duplicate","Ctrl+Shift+D");
     connect(m_duplicateAct,SIGNAL(triggered()),m_editorWidget,SLOT(duplicate()));
 
     m_deleteLineAct = new QAction(tr("Delete Line"),this);
     actionContext->regAction(m_deleteLineAct,"DeleteLine","Ctrl+Shift+K");
-
     connect(m_deleteLineAct,SIGNAL(triggered()),m_editorWidget,SLOT(deleteLine()));
+
+    m_copyLineAct = new QAction(tr("Copy Line"),this);
+    actionContext->regAction(m_copyLineAct,"CopyLine","Ctrl+Ins");
+    connect(m_copyLineAct,SIGNAL(triggered()),m_editorWidget,SLOT(copyLine()));
+
+    m_cutLineAct = new QAction(tr("Cut Line"),this);
+    actionContext->regAction(m_cutLineAct,"CutLine","Shift+Del");
+    connect(m_cutLineAct,SIGNAL(triggered()),m_editorWidget,SLOT(cutLine()));
 
     m_insertLineBeforeAct = new QAction(tr("Insert Line Before"),this);
     actionContext->regAction(m_insertLineBeforeAct,"InsertLineBefore","Ctrl+Shift+Return");
@@ -288,7 +323,7 @@ void LiteEditor::createActions()
     connect(m_insertLineAfterAct,SIGNAL(triggered()),m_editorWidget,SLOT(insertLineAfter()));
 
     m_increaseFontSizeAct = new QAction(tr("Increase Font Size"),this);
-    actionContext->regAction(m_increaseFontSizeAct,"IncreaseFontSize","Ctrl++;Ctrl+=");
+    actionContext->regAction(m_increaseFontSizeAct,"IncreaseFontSize","Ctrl++");
 
     m_decreaseFontSizeAct = new QAction(tr("Decrease Font Size"),this);
     actionContext->regAction(m_decreaseFontSizeAct,"DecreaseFontSize","Ctrl+-");
@@ -299,10 +334,62 @@ void LiteEditor::createActions()
     m_cleanWhitespaceAct = new QAction(tr("Clean Whitespace"),this);
     actionContext->regAction(m_cleanWhitespaceAct,"CleanWhitespace","");
 
-    m_wordWrapAct = new QAction(tr("Word Wrap"),this);
+    m_wordWrapAct = new QAction(tr("Word Wrap (MimeType)"),this);
     m_wordWrapAct->setCheckable(true);
     actionContext->regAction(m_wordWrapAct,"WordWrap","");
 
+    m_codeCompleteAct = new QAction(tr("Code Complete"),this);
+#ifdef Q_OS_MAC
+    actionContext->regAction(m_codeCompleteAct,"CodeComplete","Meta+Space");
+#else
+    actionContext->regAction(m_codeCompleteAct,"CodeComplete","Ctrl+Space");
+#endif
+
+    m_commentAct = new QAction(tr("Toggle Comment"),this);
+    actionContext->regAction(m_commentAct,"Comment","Ctrl+/");
+
+    m_blockCommentAct = new QAction(tr("Toggle Block Commnet"),this);
+    actionContext->regAction(m_blockCommentAct,"BlockComment","Ctrl+Shift+/");
+
+    m_autoIndentAct = new QAction(tr("Auto-indent Selection"),this);
+    actionContext->regAction(m_autoIndentAct,"AutoIndent","Ctrl+I");
+    m_autoIndentAct->setVisible(false);
+
+    m_tabToSpacesAct = new QAction(tr("Tab To Spaces (MimeType)"),this);
+    actionContext->regAction(m_tabToSpacesAct,"TabToSpaces","");
+    m_tabToSpacesAct->setCheckable(true);
+
+    m_lineEndingWindowAct = new QAction(tr("Line End Windows (\\r\\n)"),this);
+    actionContext->regAction(m_lineEndingWindowAct,"LineEndingWindow","");
+    m_lineEndingWindowAct->setCheckable(true);
+
+    m_lineEndingUnixAct = new QAction(tr("Line End Unix (\\n)"),this);
+    actionContext->regAction(m_lineEndingUnixAct,"LineEndingUnix","");
+    m_lineEndingUnixAct->setCheckable(true);
+
+    m_visualizeWhitespaceAct = new QAction(tr("Visualize Whitespace (Global)"),this);
+    actionContext->regAction(m_visualizeWhitespaceAct,"VisualizeWhitespace","");
+    m_visualizeWhitespaceAct->setCheckable(true);
+
+    m_commentAct->setVisible(false);
+    m_blockCommentAct->setVisible(false);
+
+    m_moveLineUpAction = new QAction(tr("Move Line Up"),this);
+    actionContext->regAction(m_moveLineUpAction,"MoveLineUp","Ctrl+Shift+Up");
+
+    m_moveLineDownAction = new QAction(tr("Move Line Down"),this);
+    actionContext->regAction(m_moveLineDownAction,"MoveLineDown","Ctrl+Shift+Down");
+
+    m_copyLineUpAction = new QAction(tr("Copy Line Up"),this);
+    actionContext->regAction(m_copyLineUpAction,"CopyLineUp","Ctrl+Alt+Up");
+
+    m_copyLineDownAction = new QAction(tr("Copy Line Down"),this);
+    actionContext->regAction(m_copyLineDownAction,"CopyLineDown","Ctrl+Alt+Down");
+
+    m_joinLinesAction = new QAction(tr("Jone Lines"),this);
+    actionContext->regAction(m_joinLinesAction,"JoinLines","Ctrl+J");
+
+    connect(m_codeCompleteAct,SIGNAL(triggered()),m_editorWidget,SLOT(codeCompleter()));
 //    m_widget->addAction(m_foldAct);
 //    m_widget->addAction(m_unfoldAct);
 //    m_widget->addAction(m_gotoLineAct);
@@ -341,10 +428,28 @@ void LiteEditor::createActions()
     connect(m_resetFontSizeAct,SIGNAL(triggered()),this,SLOT(resetFontSize()));
     connect(m_cleanWhitespaceAct,SIGNAL(triggered()),m_editorWidget,SLOT(cleanWhitespace()));
     connect(m_wordWrapAct,SIGNAL(triggered(bool)),m_editorWidget,SLOT(setWordWrapOverride(bool)));
+    connect(m_commentAct,SIGNAL(triggered()),this,SLOT(comment()));
+    connect(m_blockCommentAct,SIGNAL(triggered()),this,SLOT(blockComment()));
+    connect(m_autoIndentAct,SIGNAL(triggered()),this,SLOT(autoIndent()));
+    connect(m_tabToSpacesAct,SIGNAL(toggled(bool)),this,SLOT(tabToSpacesToggled(bool)));
+    connect(m_visualizeWhitespaceAct,SIGNAL(toggled(bool)),this,SLOT(toggledVisualizeWhitespace(bool)));
+    connect(m_moveLineUpAction,SIGNAL(triggered()),m_editorWidget,SLOT(moveLineUp()));
+    connect(m_moveLineDownAction,SIGNAL(triggered()),m_editorWidget,SLOT(moveLineDown()));
+    connect(m_copyLineUpAction,SIGNAL(triggered()),m_editorWidget,SLOT(copyLineUp()));
+    connect(m_copyLineDownAction,SIGNAL(triggered()),m_editorWidget,SLOT(copyLineDown()));
+    connect(m_joinLinesAction,SIGNAL(triggered()),m_editorWidget,SLOT(joinLines()));
+    //connect(m_lineEndingWindowAct,SIGNAL(triggered()),this,SLOT(lineEndingWindow()));
+    //connect(m_lineEndingUnixAct,SIGNAL(triggered()),this,SLOT(lineEndingUnixAct()));
+    QActionGroup *group = new QActionGroup(this);
+    group->addAction(m_lineEndingWindowAct);
+    group->addAction(m_lineEndingUnixAct);
+    connect(group,SIGNAL(triggered(QAction*)),this,SLOT(triggeredLineEnding(QAction*)));
 
+#ifdef Q_OS_WIN
     QClipboard *clipboard = QApplication::clipboard();
     connect(clipboard,SIGNAL(dataChanged()),this,SLOT(clipbordDataChanged()));
     clipbordDataChanged();
+#endif
 }
 
 void LiteEditor::findCodecs()
@@ -379,20 +484,16 @@ void LiteEditor::findCodecs()
 
 void LiteEditor::createToolBars()
 {
-    m_toolBar = new QToolBar("editor",m_widget);
-    m_toolBar->setIconSize(LiteApi::getToolBarIconSize());
-    m_toolBar->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Preferred);
-
-    m_infoToolBar = new QToolBar("info",m_widget);
-    m_infoToolBar->setIconSize(LiteApi::getToolBarIconSize());
+    m_editToolBar = new QToolBar("editor",m_widget);
+    m_editToolBar->setIconSize(LiteApi::getToolBarIconSize(m_liteApp));
 
     //editor toolbar
-    m_toolBar->addAction(m_undoAct);
-    m_toolBar->addAction(m_redoAct);
-    m_toolBar->addSeparator();
-    m_toolBar->addAction(m_cutAct);
-    m_toolBar->addAction(m_copyAct);
-    m_toolBar->addAction(m_pasteAct);
+    m_editToolBar->addAction(m_undoAct);
+    m_editToolBar->addAction(m_redoAct);
+    m_editToolBar->addSeparator();
+    m_editToolBar->addAction(m_cutAct);
+    m_editToolBar->addAction(m_copyAct);
+    m_editToolBar->addAction(m_pasteAct);
 #ifdef LITEEDITOR_FIND
     m_findComboBox = new QComboBox(m_widget);
     m_findComboBox->setEditable(true);
@@ -405,21 +506,23 @@ void LiteEditor::createToolBars()
 
     //info toolbar
 
+    m_editToolBar->addSeparator();
     //add lock info
-    m_infoToolBar->addAction(m_lockAct);
+    m_editToolBar->addAction(m_lockAct);
+
 
     //add over info
     QLabel *overInfo = new QLabel("[Over]");
-    m_overInfoAct = m_infoToolBar->addWidget(overInfo);
+    m_overInfoAct = m_editToolBar->addWidget(overInfo);
     m_overInfoAct->setVisible(false);
 
     //add line info
     m_lineInfo = new QLabelEx("000:000");
-    m_infoToolBar->addWidget(m_lineInfo);
+    m_editToolBar->addWidget(m_lineInfo);
 
     //add close
-    m_closeEditorAct = new QAction(QIcon("icon:images/closetool.png"),tr("Close Document"),this);
-    m_infoToolBar->addAction(m_closeEditorAct);
+    //m_closeEditorAct = new QAction(QIcon("icon:images/closetool.png"),tr("Close Document"),this);
+    //m_infoToolBar->addAction(m_closeEditorAct);
 }
 
 void LiteEditor::createMenu()
@@ -437,28 +540,29 @@ void LiteEditor::createMenu()
     m_editMenu->addSeparator();
     m_editMenu->addAction(m_selectAllAct);
     m_editMenu->addSeparator();
-    QMenu * subMenu = m_editMenu->addMenu(tr("Advanced"));
+
+    QMenu *subMenu = m_editMenu->addMenu(tr("Advanced"));
     subMenu->addAction(m_duplicateAct);
+    subMenu->addAction(m_copyLineAct);
     subMenu->addAction(m_deleteLineAct);
+    subMenu->addAction(m_cutLineAct);
+    subMenu->addAction(m_moveLineUpAction);
+    subMenu->addAction(m_moveLineDownAction);
+    subMenu->addAction(m_copyLineUpAction);
+    subMenu->addAction(m_copyLineDownAction);
+    subMenu->addAction(m_joinLinesAction);
     subMenu->addAction(m_insertLineBeforeAct);
     subMenu->addAction(m_insertLineAfterAct);
     subMenu->addSeparator();
-    subMenu->addAction(m_foldAct);
-    subMenu->addAction(m_unfoldAct);
-    subMenu->addAction(m_foldAllAct);
-    subMenu->addAction(m_unfoldAllAct);
+    subMenu->addAction(m_cleanWhitespaceAct);
     subMenu->addSeparator();
     subMenu->addAction(m_selectBlockAct);
+    subMenu->addAction(m_selectAllAct);
+    subMenu->addSeparator();
+    subMenu->addAction(m_gotoLineAct);
     subMenu->addAction(m_gotoMatchBraceAct);
     subMenu->addAction(m_gotoPrevBlockAct);
     subMenu->addAction(m_gotoNextBlockAct);
-    subMenu->addSeparator();
-    subMenu->addAction(m_increaseFontSizeAct);
-    subMenu->addAction(m_decreaseFontSizeAct);
-    subMenu->addAction(m_resetFontSizeAct);
-    subMenu->addSeparator();
-    subMenu->addAction(m_cleanWhitespaceAct);
-    subMenu->addAction(m_wordWrapAct);
 #ifndef QT_NO_PRINTER
     subMenu->addSeparator();
     subMenu->addAction(m_exportPdfAct);
@@ -466,25 +570,72 @@ void LiteEditor::createMenu()
     subMenu->addAction(m_filePrintPreviewAct);
     subMenu->addAction(m_filePrintAct);
 #endif
+
+    subMenu = m_editMenu->addMenu(tr("Code Folding"));
+    subMenu->addAction(m_foldAct);
+    subMenu->addAction(m_unfoldAct);
+    subMenu->addAction(m_foldAllAct);
+    subMenu->addAction(m_unfoldAllAct);
+
+    subMenu = m_editMenu->addMenu(tr("Setup"));
+    subMenu->addAction(m_visualizeWhitespaceAct);
+    subMenu->addSeparator();
+    subMenu->addAction(m_wordWrapAct);
+    subMenu->addAction(m_tabToSpacesAct);
+    subMenu->addSeparator();
+    subMenu->addAction(m_increaseFontSizeAct);
+    subMenu->addAction(m_decreaseFontSizeAct);
+    subMenu->addAction(m_resetFontSizeAct);
+    subMenu->addSeparator();
+    subMenu->addAction(m_lineEndingWindowAct);
+    subMenu->addAction(m_lineEndingUnixAct);
+
     m_editMenu->addSeparator();
-    m_editMenu->addAction(m_gotoLineAct);
+    m_editMenu->addAction(m_codeCompleteAct);
+    m_editMenu->addSeparator();
+    m_editMenu->addAction(m_commentAct);
+    m_editMenu->addAction(m_blockCommentAct);
+    m_editMenu->addAction(m_autoIndentAct);
 
     //context menu
     m_contextMenu->addAction(m_cutAct);
     m_contextMenu->addAction(m_copyAct);
     m_contextMenu->addAction(m_pasteAct);
-    m_contextMenu->addAction(m_duplicateAct);
     m_contextMenu->addSeparator();
+
+    subMenu = m_contextMenu->addMenu(tr("Advanced"));
+    subMenu->addAction(m_duplicateAct);
+    subMenu->addAction(m_copyLineAct);
+    subMenu->addAction(m_deleteLineAct);
+    subMenu->addAction(m_cutLineAct);
+    subMenu->addAction(m_moveLineUpAction);
+    subMenu->addAction(m_moveLineDownAction);
+    subMenu->addAction(m_copyLineUpAction);
+    subMenu->addAction(m_copyLineDownAction);
+    subMenu->addAction(m_joinLinesAction);
+    subMenu->addAction(m_insertLineBeforeAct);
+    subMenu->addAction(m_insertLineAfterAct);
+    subMenu->addSeparator();
+    subMenu->addAction(m_cleanWhitespaceAct);
+    subMenu->addSeparator();
+    subMenu->addAction(m_selectBlockAct);
+    subMenu->addAction(m_selectAllAct);
+    subMenu->addSeparator();
+    subMenu->addAction(m_gotoLineAct);
+    subMenu->addAction(m_gotoMatchBraceAct);
+    subMenu->addAction(m_gotoPrevBlockAct);
+    subMenu->addAction(m_gotoNextBlockAct);
+
     subMenu = m_contextMenu->addMenu(tr("Code Folding"));
     subMenu->addAction(m_foldAct);
     subMenu->addAction(m_unfoldAct);
     subMenu->addAction(m_foldAllAct);
     subMenu->addAction(m_unfoldAllAct);
-    subMenu = m_contextMenu->addMenu(tr("Line"));
-    subMenu->addAction(m_duplicateAct);
-    subMenu->addAction(m_deleteLineAct);
-    subMenu->addAction(m_insertLineBeforeAct);
-    subMenu->addAction(m_insertLineAfterAct);
+
+    m_contextMenu->addSeparator();
+    m_contextMenu->addAction(m_commentAct);
+    m_contextMenu->addAction(m_blockCommentAct);
+    m_contextMenu->addAction(m_autoIndentAct);
 }
 
 #ifdef LITEEDITOR_FIND
@@ -518,12 +669,19 @@ QIcon LiteEditor::icon() const
     return QIcon();
 }
 
+void LiteEditor::initLoad()
+{
+    m_editorWidget->initLoadDocument();
+    setReadOnly(m_file->isReadOnly());
+    m_lineEndingUnixAct->setChecked(m_file->isLineEndUnix());
+    m_lineEndingWindowAct->setChecked(!m_file->isLineEndUnix());
+}
+
 bool LiteEditor::createNew(const QString &contents, const QString &mimeType)
 {
     bool success = m_file->create(contents,mimeType);
     if (success) {
-        m_editorWidget->initLoadDocument();
-        setReadOnly(m_file->isReadOnly());
+        initLoad();
     }
     return success;
 }
@@ -531,17 +689,20 @@ bool LiteEditor::createNew(const QString &contents, const QString &mimeType)
 bool LiteEditor::open(const QString &fileName,const QString &mimeType)
 {
     bool success = m_file->open(fileName,mimeType);
-    if (success) {        
-        m_editorWidget->initLoadDocument();
-        setReadOnly(m_file->isReadOnly());
+    if (success) {
+        initLoad();;
     }
     return success;
 }
 
 bool LiteEditor::reload()
 {
+    QByteArray state = this->saveState();
     bool success = open(filePath(),mimeType());
     if (success) {
+        this->clearAllNavigateMarks();
+        this->setNavigateHead(LiteApi::EditorNavigateReload,tr("Reload File"));
+        this->restoreState(state);
         emit reloaded();
     }
     return success;
@@ -614,14 +775,14 @@ int LiteEditor::column() const
     return m_editorWidget->textCursor().columnNumber();
 }
 
-int LiteEditor::utf8Position() const
+int LiteEditor::utf8Position(bool realFile, int pos) const
 {
     QTextCursor cur = m_editorWidget->textCursor();
-    QString src = cur.document()->toPlainText().left(cur.position());
+    QString src = cur.document()->toPlainText().left(pos >= 0 ? pos : cur.position());
     int offset = 0;
-//    if (m_file->m_lineTerminatorMode == LiteEditorFile::CRLFLineTerminator) {
-//       offset = cur.blockNumber();
-//    }
+    if (realFile && m_file->isLineEndWindow()) {
+       offset = cur.blockNumber();
+    }
     return src.toUtf8().length()+offset+1;
 }
 
@@ -649,6 +810,75 @@ void LiteEditor::gotoLine(int line, int column, bool center)
     m_editorWidget->gotoLine(line,column,center);
 }
 
+int LiteEditor::position(LiteApi::ITextEditor::PositionOperation posOp, int at) const
+{
+    QTextCursor tc = m_editorWidget->textCursor();
+
+    if (at != -1)
+        tc.setPosition(at);
+
+    if (posOp == ITextEditor::Current)
+        return tc.position();
+
+    switch (posOp) {
+    case ITextEditor::EndOfLine:
+        tc.movePosition(QTextCursor::EndOfLine);
+        return tc.position();
+    case ITextEditor::StartOfLine:
+        tc.movePosition(QTextCursor::StartOfLine);
+        return tc.position();
+    case ITextEditor::Anchor:
+        if (tc.hasSelection())
+            return tc.anchor();
+        break;
+    case ITextEditor::EndOfDoc:
+        tc.movePosition(QTextCursor::End);
+        return tc.position();
+    default:
+        break;
+    }
+
+    return -1;
+}
+
+QString LiteEditor::textAt(int pos, int length) const
+{
+    QTextCursor c = m_editorWidget->textCursor();
+
+    if (pos < 0)
+        pos = 0;
+    c.movePosition(QTextCursor::End);
+    if (pos + length > c.position())
+        length = c.position() - pos;
+
+    c.setPosition(pos);
+    c.setPosition(pos + length, QTextCursor::KeepAnchor);
+
+    return c.selectedText();
+}
+
+QRect LiteEditor::cursorRect(int pos) const
+{
+    QTextCursor tc = m_editorWidget->textCursor();
+    if (pos >= 0)
+        tc.setPosition(pos);
+    QRect result = m_editorWidget->cursorRect(tc);
+    result.moveTo(m_editorWidget->viewport()->mapToGlobal(result.topLeft()));
+    return result;
+}
+
+
+
+LiteEditorWidget *LiteEditor::editorWidget() const
+{
+    return m_editorWidget;
+}
+
+QTextCursor LiteEditor::textCursor() const
+{
+    return m_editorWidget->textCursor();
+}
+
 void LiteEditor::applyOption(QString id)
 {
     if (id != OPTION_LITEEDITOR) {
@@ -661,16 +891,21 @@ void LiteEditor::applyOption(QString id)
     bool autoBraces2 = m_liteApp->settings()->value(EDITOR_AUTOBRACE2,true).toBool();
     bool autoBraces3 = m_liteApp->settings()->value(EDITOR_AUTOBRACE3,true).toBool();
     bool autoBraces4 = m_liteApp->settings()->value(EDITOR_AUTOBRACE4,true).toBool();
+    bool autoBraces5 = m_liteApp->settings()->value(EDITOR_AUTOBRACE5,true).toBool();
     bool caseSensitive = m_liteApp->settings()->value(EDITOR_COMPLETER_CASESENSITIVE,false).toBool();
     bool lineNumberVisible = m_liteApp->settings()->value(EDITOR_LINENUMBERVISIBLE,true).toBool();
+    bool codeFoldVisible = m_liteApp->settings()->value(EDITOR_CODEFOLDVISIBLE,true).toBool();
     bool rightLineVisible = m_liteApp->settings()->value(EDITOR_RIGHTLINEVISIBLE,true).toBool();
     bool eofVisible = m_liteApp->settings()->value(EDITOR_EOFVISIBLE,false).toBool();
     bool defaultWordWrap = m_liteApp->settings()->value(EDITOR_DEFAULTWORDWRAP,false).toBool();
     bool indentLineVisible = m_liteApp->settings()->value(EDITOR_INDENTLINEVISIBLE,true).toBool();
     bool wheelZooming = m_liteApp->settings()->value(EDITOR_WHEEL_SCROLL,true).toBool();
+    bool visualizeWhitespace = m_liteApp->settings()->value(EDITOR_VISUALIZEWHITESPACE,false).toBool();
     int rightLineWidth = m_liteApp->settings()->value(EDITOR_RIGHTLINEWIDTH,80).toInt();
     int min = m_liteApp->settings()->value(EDITOR_PREFIXLENGTH,1).toInt();
     m_editorWidget->setPrefixMin(min);
+
+    m_offsetVisible = m_liteApp->settings()->value(EDITOR_OFFSETVISIBLE,false).toBool();
 
     m_editorWidget->setAutoIndent(autoIndent);
     m_editorWidget->setAutoBraces0(autoBraces0);
@@ -678,56 +913,40 @@ void LiteEditor::applyOption(QString id)
     m_editorWidget->setAutoBraces2(autoBraces2);
     m_editorWidget->setAutoBraces3(autoBraces3);
     m_editorWidget->setAutoBraces4(autoBraces4);
+    m_editorWidget->setAutoBraces5(autoBraces5);
     m_editorWidget->setLineNumberVisible(lineNumberVisible);
+    m_editorWidget->setCodeFoldVisible(codeFoldVisible);
     m_editorWidget->setEofVisible(eofVisible);
     m_editorWidget->setIndentLineVisible(indentLineVisible);
     m_editorWidget->setRightLineVisible(rightLineVisible);
     m_editorWidget->setRightLineWidth(rightLineWidth);
     m_editorWidget->setDefaultWordWrap(defaultWordWrap);
     m_editorWidget->setScrollWheelZooming(wheelZooming);
+    m_editorWidget->setVisualizeWhitespace(visualizeWhitespace);
 
     if (m_completer) {
-        m_completer->completer()->setCaseSensitivity(caseSensitive ? Qt::CaseSensitive : Qt::CaseInsensitive);
+        m_completer->setCaseSensitivity(caseSensitive ? Qt::CaseSensitive : Qt::CaseInsensitive);
     }
 
-#if defined(Q_OS_WIN)
-    QString fontFamily = m_liteApp->settings()->value(EDITOR_FAMILY,"Courier").toString();
-#elif defined(Q_OS_LINUX)
-    QString fontFamily = m_liteApp->settings()->value(EDITOR_FAMILY,"Monospace").toString();
-#elif defined(Q_OS_MAC)
-    QString fontFamily = m_liteApp->settings()->value(EDITOR_FAMILY,"Menlo").toString();
-#endif
-    int fontSize = m_liteApp->settings()->value(EDITOR_FONTSIZE,12).toInt();
-    int fontZoom = m_liteApp->settings()->value(EDITOR_FONTZOOM,100).toInt();    
-    bool antialias = m_liteApp->settings()->value(EDITOR_ANTIALIAS,true).toBool();
-    QFont font = m_editorWidget->font();
-    font.setFamily(fontFamily);
-    font.setPointSize(fontSize*fontZoom/100.0);
-    if (antialias) {
-        font.setStyleStrategy(QFont::PreferAntialias);
-    } else {
-        font.setStyleStrategy(QFont::NoAntialias);
-    }
-    m_editorWidget->setFont(font);
-    m_editorWidget->extraArea()->setFont(font);
-    m_editorWidget->slotUpdateExtraAreaWidth();
+    updateFont();
 
     QString mime = this->m_file->mimeType();
     int tabWidth = m_liteApp->settings()->value(EDITOR_TABWIDTH+mime,4).toInt();
-    m_editorWidget->setTabSize(tabWidth);
-    bool useSpace = m_liteApp->settings()->value(EDITOR_TABUSESPACE+mime,false).toBool();
-    m_editorWidget->setTabUseSpace(useSpace);
-
-    emit tabSettingChanged(tabWidth);
+    bool useSpace = m_liteApp->settings()->value(EDITOR_TABTOSPACES+mime,false).toBool();
+    this->setTabOption(tabWidth,useSpace);
+    m_visualizeWhitespaceAct->setChecked(visualizeWhitespace);
 }
 
-void LiteEditor::updateTip(QString func,QString args)
+void LiteEditor::updateTip(const QString &func,const QString &kind,const QString &info)
 {
-    if (args.isEmpty()) {
+    QString tip = m_editorWidget->textLexer()->fetchFunctionTip(func,kind,info);
+    if (tip.isEmpty()) {
         return;
     }
-    QString tip = QString("%1 %2").arg(func).arg(args);
-    //m_liteApp->outputManager()->setStatusInfo(tip);
+    if (!m_funcTip) {
+        m_funcTip = new FunctionTooltip(m_liteApp,this,m_editorWidget->textLexer(),20);
+    }
+    m_funcTip->showFunctionHint(this->position(),tip);
 }
 
 void LiteEditor::filePrintPreview()
@@ -847,27 +1066,38 @@ void LiteEditor::codecComboBoxChanged(QString codec)
 void LiteEditor::editPositionChanged()
 {
      QTextCursor cur = m_editorWidget->textCursor();
-/*
-     QString src = cur.document()->toPlainText().left(cur.position());
-     int offset = 0;
-     if (m_file->m_lineTerminatorMode == LiteEditorFile::CRLFLineTerminator) {
-        offset = cur.blockNumber();
+     //QString src = cur.document()->toPlainText().left(cur.position());
+//     int offset = 0;
+//     if (m_file->isLineEndWindow()) {
+//        offset = cur.blockNumber();
+//     }
+     QString line;
+     if (m_offsetVisible) {
+         line = QString("%1:%2 [%3]").arg(cur.blockNumber()+1,3).arg(cur.columnNumber()+1,3).arg(this->utf8Position(true));
+     } else {
+         line = QString("%1:%2").arg(cur.blockNumber()+1,3).arg(cur.columnNumber()+1,3);
      }
-*/
-     //m_liteApp->editorManager()->updateLine(this,cur.blockNumber()+1,cur.columnNumber()+1, src.toUtf8().length()+offset+1);
-     m_lineInfo->setText(QString("%1:%2 ").arg(cur.blockNumber()+1,3).arg(cur.columnNumber()+1,3));
+     if (m_bReadOnly) {
+         m_liteApp->editorManager()->updateEditInfo(QString("[%1] %2").arg(tr("ReadOnly")).arg(line));
+     } else {
+         m_liteApp->editorManager()->updateEditInfo(line);
+     }
 }
 
 void LiteEditor::gotoLine()
 {
     int min = 1;
     int max = m_editorWidget->document()->blockCount();
-    int v = m_editorWidget->textCursor().blockNumber()+1;
+    int old = m_editorWidget->textCursor().blockNumber()+1;
     bool ok = false;
-    v = QInputDialog::getInt(this->m_widget,tr("Go To Line"),tr("Line: ")+QString("%1-%2").arg(min).arg(max),v,min,max,1,&ok);
+    int v = QInputDialog::getInt(this->m_widget,tr("Go To Line"),tr("Line: ")+QString("%1-%2").arg(min).arg(max),old,min,max,1,&ok);
     if (!ok) {
         return;
     }
+    if (v == old) {
+        return;
+    }
+    m_liteApp->editorManager()->addNavigationHistory();
     this->gotoLine(v-1,0,true);
 }
 
@@ -905,7 +1135,8 @@ void LiteEditor::onActive()
 {
     m_editorWidget->setFocus();
     //clipbordDataChanged();
-    //editPositionChanged();
+    editPositionChanged();
+    //m_editorWidget->saveCurrentCursorPositionForNavigation();
 }
 
 void LiteEditor::setFindOption(LiteApi::FindOption *opt)
@@ -923,18 +1154,62 @@ void LiteEditor::setNavigateHead(LiteApi::EditorNaviagteType type, const QString
     m_editorWidget->setNavigateHead(type,msg);
 }
 
-void LiteEditor::insertNavigateMark(int line, LiteApi::EditorNaviagteType type, const QString &msg )
+void LiteEditor::insertNavigateMark(int line, LiteApi::EditorNaviagteType type, const QString &msg, const char* tag = "")
 {
-    m_editorWidget->insertNavigateMark(line,type,msg);
+    m_editorWidget->insertNavigateMark(line,type,msg, tag);
 }
 
 void LiteEditor::clearNavigateMarak(int /*line*/)
 {
 }
 
-void LiteEditor::clearAllNavigateMark(LiteApi::EditorNaviagteType types)
+void LiteEditor::clearAllNavigateMarks()
 {
-    m_editorWidget->clearAllNavigateMark(types);
+    m_editorWidget->clearAllNavigateMarks();
+}
+
+void LiteEditor::clearAllNavigateMark(LiteApi::EditorNaviagteType types, const char *tag = "")
+{
+    m_editorWidget->clearAllNavigateMark(types, tag);
+}
+
+void LiteEditor::showLink(const LiteApi::Link &link)
+{
+    m_editorWidget->showLink(link);
+}
+
+void LiteEditor::clearLink()
+{
+    m_editorWidget->clearLink();
+}
+
+void LiteEditor::setTabOption(int tabSize, bool tabToSpace)
+{
+    m_editorWidget->setTabSize(tabSize);
+    m_editorWidget->setTabToSpaces(tabToSpace);
+    if (m_syntax) {
+        m_syntax->setTabSize(tabSize);
+    }
+    m_tabToSpacesAct->setChecked(tabToSpace);
+}
+
+void LiteEditor::setEnableAutoIndentAction(bool b)
+{
+    m_autoIndentAct->setVisible(b);
+}
+
+bool LiteEditor::isLineEndUnix() const
+{
+    return m_file->isLineEndUnix();
+}
+
+void LiteEditor::setLineEndUnix(bool b)
+{
+    if (m_file->setLineEndUnix(b)) {
+        m_lineEndingUnixAct->setChecked(b);
+        m_lineEndingWindowAct->setChecked(!b);
+        m_liteApp->editorManager()->saveEditor(this,false);
+    }
 }
 
 void LiteEditor::selectNextParam()
@@ -973,18 +1248,91 @@ void LiteEditor::resetFontSize()
     m_liteApp->settings()->setValue(EDITOR_FONTZOOM,100);
     QFont font = m_editorWidget->font();
     font.setPointSize(fontSize);
-    m_editorWidget->setFont(font);
-    m_editorWidget->extraArea()->setFont(font);
-    m_editorWidget->updateTabWidth();
-    m_editorWidget->slotUpdateExtraAreaWidth();
+    m_editorWidget->updateFont(font);
+    this->sendUpdateFont();
 }
 
-void LiteEditor::setEditToolbarVisible(bool visible)
+void LiteEditor::setEditToolbarVisible(bool /*visible*/)
 {
-    m_toolBar->setVisible(visible);
-    m_infoToolBar->setVisible(visible);
+    //m_editToolBar->setVisible(visible);
 }
 
+void LiteEditor::comment()
+{
+    if (!m_syntax) {
+        return;
+    }
+    TextEditor::SyntaxComment comment = m_syntax->comment();
+    Utils::CommentDefinition cd;
+    cd.setAfterWhiteSpaces(comment.isCommentAfterWhiteSpaces);
+    cd.setSingleLine(comment.singleLineComment);
+    cd.setMultiLineStart(comment.multiLineCommentStart);
+    cd.setMultiLineEnd(comment.multiLineCommentEnd);
+    Utils::unCommentSelection(m_editorWidget,Utils::AutoComment,cd);
+}
+
+void LiteEditor::blockComment()
+{
+}
+
+void LiteEditor::autoIndent()
+{
+    m_editorWidget->autoIndent();
+}
+
+void LiteEditor::tabToSpacesToggled(bool b)
+{
+    m_liteApp->settings()->setValue(EDITOR_TABTOSPACES+this->mimeType(),b);
+    m_editorWidget->setTabToSpaces(b);
+}
+
+void LiteEditor::toggledVisualizeWhitespace(bool b)
+{
+    m_liteApp->settings()->setValue(EDITOR_VISUALIZEWHITESPACE,b);
+    m_editorWidget->setVisualizeWhitespace(b);
+}
+
+void LiteEditor::triggeredLineEnding(QAction *action)
+{
+    this->setLineEndUnix(action == m_lineEndingUnixAct);
+}
+
+void LiteEditor::broadcast(const QString &module, const QString &id, const QString &param)
+{
+    if (module == "liteeditor" && id == "font" && param != this->filePath()) {
+        this->updateFont();
+    }
+}
+
+void LiteEditor::updateFont()
+{
+#if defined(Q_OS_WIN)
+    QString fontFamily = m_liteApp->settings()->value(EDITOR_FAMILY,"Courier").toString();
+#elif defined(Q_OS_LINUX)
+    QString fontFamily = m_liteApp->settings()->value(EDITOR_FAMILY,"Monospace").toString();
+#elif defined(Q_OS_MAC)
+    QString fontFamily = m_liteApp->settings()->value(EDITOR_FAMILY,"Menlo").toString();
+#else
+    QString fontFamily = m_liteApp->settings()->value(EDITOR_FAMILY,"Monospace").toString();
+#endif
+    int fontSize = m_liteApp->settings()->value(EDITOR_FONTSIZE,12).toInt();
+    int fontZoom = m_liteApp->settings()->value(EDITOR_FONTZOOM,100).toInt();
+    bool antialias = m_liteApp->settings()->value(EDITOR_ANTIALIAS,true).toBool();
+    QFont font = m_editorWidget->font();
+    font.setFamily(fontFamily);
+    font.setPointSize(fontSize*fontZoom/100.0);
+    if (antialias) {
+        font.setStyleStrategy(QFont::PreferAntialias);
+    } else {
+        font.setStyleStrategy(QFont::NoAntialias);
+    }
+    m_editorWidget->updateFont(font);
+}
+
+void LiteEditor::sendUpdateFont()
+{
+    m_liteApp->sendBroadcast("liteeditor","font",this->filePath());
+}
 
 QLabelEx::QLabelEx(const QString &text, QWidget *parent) :
     QLabel(text,parent)
@@ -1010,10 +1358,9 @@ void LiteEditor::requestFontZoom(int zoom)
 
     QFont font = m_editorWidget->font();
     font.setPointSize(fontSize*fontZoom/100.0);
-    m_editorWidget->setFont(font);
-    m_editorWidget->extraArea()->setFont(font);
-    m_editorWidget->updateTabWidth();
-    m_editorWidget->slotUpdateExtraAreaWidth();
+    m_editorWidget->updateFont(font);
+
+    this->sendUpdateFont();
 }
 
 void LiteEditor::loadColorStyleScheme()
@@ -1024,6 +1371,7 @@ void LiteEditor::loadColorStyleScheme()
     const ColorStyle *text = colorScheme->findStyle("Text");
     const ColorStyle *selection = colorScheme->findStyle("Selection");
     const ColorStyle *currentLine = colorScheme->findStyle("CurrentLine");
+    const ColorStyle *visualWhitespace = colorScheme->findStyle("VisualWhitespace");
     if (extra) {
         m_editorWidget->setExtraColor(extra->foregound(),extra->background());
     }
@@ -1032,6 +1380,9 @@ void LiteEditor::loadColorStyleScheme()
     }
     if (currentLine) {
         m_editorWidget->setCurrentLineColor(currentLine->background());
+    }
+    if (visualWhitespace) {
+        m_editorWidget->setVisualizeWhitespaceColor(visualWhitespace->foregound());
     }
     QPalette p = m_defEditorPalette;
     if (text) {
@@ -1060,7 +1411,38 @@ void LiteEditor::loadColorStyleScheme()
                 .arg(p.highlightedText().color().name())
                 .arg(p.highlight().color().name());
     m_editorWidget->setPalette(p);
+//#ifdef Q_OS_MAC
+//    #if QT_VERSION >= 0x050000
+//        m_editorWidget->setStyleSheet(sheet);
+//    #else
+//        if (QSysInfo::MacintoshVersion <= QSysInfo::MV_10_8) {
+//            m_editorWidget->setStyleSheet(sheet);
+//        }
+//    #endif
+//#else
     m_editorWidget->setStyleSheet(sheet);
-
+//#endif
     emit colorStyleChanged();
+}
+
+
+EditContext::EditContext(LiteEditor *editor, QObject *parent)
+    : LiteApi::IEditContext(parent), m_editor(editor)
+{
+
+}
+
+QWidget *EditContext::focusWidget() const
+{
+    return m_editor->m_editorWidget;
+}
+
+QMenu *EditContext::focusMenu() const
+{
+    return m_editor->m_editMenu;
+}
+
+QToolBar *EditContext::focusToolBar() const
+{
+    return 0;//m_editor->m_editToolBar;
 }

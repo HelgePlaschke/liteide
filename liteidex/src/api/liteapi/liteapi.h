@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -29,6 +29,7 @@
 
 #include <QWidget>
 #include <QMenu>
+#include <QToolBar>
 #include <QPlainTextEdit>
 #include <QSettings>
 #include <QMainWindow>
@@ -38,6 +39,7 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QDesktopServices>
+#include <QTextCursor>
 
 class ColorStyle;
 class ColorStyleScheme;
@@ -108,6 +110,7 @@ class IMimeType
 public:
     virtual ~IMimeType() {}
 
+    virtual QString package() const = 0;
     virtual QString type() const = 0;
     virtual QString scheme() const = 0;
     virtual QString comment() const = 0;
@@ -126,6 +129,7 @@ public:
     virtual void removeMimeType(IMimeType *mimeType) = 0;
     virtual QList<IMimeType*> mimeTypeList() const= 0;
     virtual IMimeType *findMimeType(const QString &type) const = 0;
+    virtual QString findPackageByMimeType(const QString &type) const = 0;
     virtual QString findMimeTypeByFile(const QString &fileName) const = 0;
     virtual QString findMimeTypeBySuffix(const QString &suffix) const = 0;
     virtual QString findMimeTypeByScheme(const QString &scheme) const = 0;
@@ -185,6 +189,13 @@ public:
     virtual bool findTargetInfo(const QString &fileName, const QString &mimetype, QMap<QString,QString>& targetInfo) const = 0;
 };
 
+enum FILESYSTEM_CONTEXT_FLAG {
+    FILESYSTEM_ROOT = 0,
+    FILESYSTEM_ROOTFOLDER,
+    FILESYSTEM_FOLDER,
+    FILESYSTEM_FILES
+};
+
 class IFileManager : public IManager
 {
     Q_OBJECT
@@ -193,7 +204,7 @@ public:
 
     virtual void execFileWizard(const QString &projPath, const QString &filePath, const QString &gopath = QString()) = 0;
     virtual bool openFile(const QString &fileName) = 0;
-    virtual IEditor *openEditor(const QString &fileName, bool bActive = true) = 0;
+    virtual IEditor *openEditor(const QString &fileName, bool bActive = true, bool ignoreNavigationHistory = false) = 0;
     virtual IEditor *createEditor(const QString &contents, const QString &_mimeType) = 0;
     virtual IEditor *createEditor(const QString &fileName) = 0;
     virtual IProject *openProject(const QString &fileName) = 0;
@@ -204,21 +215,32 @@ public:
     virtual void removeRecentFile(const QString &fileName, const QString &scheme) = 0;
     virtual QStringList recentFiles(const QString &scheme) const = 0;
     virtual bool findProjectTargetInfo(const QString &fileName, QMap<QString,QString>& targetInfo) const = 0;
-    virtual IApplication* openFolderEx(const QString &folder) = 0;
+    //virtual IApplication* openFolderEx(const QString &folder) = 0;
     virtual QStringList folderList() const = 0;
     virtual void setFolderList(const QStringList &folders) = 0;
-    virtual void addFolder(const QString &folders) = 0;
+    virtual void addFolderList(const QString &folders) = 0;
     virtual IApplication* openFolderInNewWindow(const QString &folder) = 0;
 signals:
     void fileListChanged();
     void recentFilesChanged(QString);
     void fileWizardFinished(const QString &type, const QString &scheme, const QString &location);
+    void aboutToShowFolderContextMenu(QMenu *menu, LiteApi::FILESYSTEM_CONTEXT_FLAG flag, const QFileInfo &info);
 public slots:
     virtual void newFile() = 0;
     virtual void openFiles() = 0;
     virtual void openFolder() = 0;
     virtual void openEditors() = 0;
     virtual void openProjects() = 0;
+};
+
+class IEditContext : public QObject
+{
+    Q_OBJECT
+public:
+    IEditContext(QObject *parent) : QObject(parent) {}
+    virtual QWidget *focusWidget() const = 0;
+    virtual QMenu   *focusMenu() const = 0;
+    virtual QToolBar *focusToolBar() const = 0;
 };
 
 class IView : public IObject
@@ -267,15 +289,26 @@ class ITextEditor : public IEditor
 {
     Q_OBJECT
 public:
+    enum PositionOperation {
+        Current = 1,
+        EndOfLine = 2,
+        StartOfLine = 3,
+        Anchor = 4,
+        EndOfDoc = 5
+    };
     ITextEditor(QObject *parent = 0) : IEditor(parent) {}
     virtual int line() const = 0;
     virtual int column() const = 0;
-    virtual int utf8Position() const = 0;
+    virtual int utf8Position(bool realFile = false, int pos = -1) const = 0;
     virtual QByteArray utf8Data() const = 0;
     virtual void setWordWrap(bool wrap) = 0;
     virtual bool wordWrap() const = 0;
     virtual void gotoLine(int line, int column, bool center = false) = 0;
     virtual void setFindOption(FindOption *opt) = 0;
+    virtual int position(PositionOperation posOp = Current, int at = -1) const = 0;
+    virtual QString textAt(int pos, int length) const = 0;
+    virtual QRect cursorRect(int pos = -1) const = 0;
+    virtual QTextCursor textCursor() const = 0;
 };
 
 inline ITextEditor *getTextEditor(IEditor *editor)
@@ -290,6 +323,14 @@ inline QMenu *getMenu(IObject *obj, const QString &id)
 {
     if (obj && obj->extension()) {
         return findExtensionObject<QMenu*>(obj->extension(),QString("LiteApi.Menu.%1").arg(id));
+    }
+    return 0;
+}
+
+inline IEditContext *getEditContext(IObject *obj)
+{
+    if (obj && obj->extension()) {
+        return findExtensionObject<IEditContext*>(obj->extension(),"LiteApi.IEditContext");
     }
     return 0;
 }
@@ -314,6 +355,21 @@ inline QPlainTextEdit *getPlainTextEdit(IEditor *editor) {
     return 0;
 }
 
+inline QToolBar *getEditToolBar(IEditor *editor) {
+    if (editor && editor->extension()) {
+        return findExtensionObject<QToolBar*>(editor->extension(),"LiteApi.QToolBar.Edit");
+    }
+    return 0;
+}
+
+inline QToolBar *getBuildToolBar(IEditor *editor) {
+    if (editor && editor->extension()) {
+        return findExtensionObject<QToolBar*>(editor->extension(),"LiteApi.QToolBar.Build");
+    }
+    return 0;
+}
+
+
 class IEditorManager : public IManager
 {
     Q_OBJECT
@@ -326,7 +382,7 @@ public:
     virtual QStringList mimeTypeList() const = 0;
     virtual QWidget *widget() = 0;
     virtual IEditor *currentEditor() const = 0;
-    virtual void setCurrentEditor(IEditor *editor) = 0;
+    virtual void setCurrentEditor(IEditor *editor, bool ignoreNavigationHistory = false) = 0;
     virtual IEditor *findEditor(const QString &fileName, bool canonical) const = 0;
     virtual QList<IEditor*> editorList() const = 0;
     virtual QAction *registerBrowser(IEditor *editor) = 0;
@@ -335,10 +391,13 @@ public:
     virtual void cutForwardNavigationHistory() = 0;
     virtual void loadColorStyleScheme(const QString &fileName) = 0;
     virtual const ColorStyleScheme *colorStyleScheme() const = 0;
+    virtual void addEditContext(IEditContext *context) = 0;
+    virtual void removeEditContext(IEditContext *context) = 0;
+    virtual void updateEditInfo(const QString &info) = 0;
 public slots:
     virtual bool saveEditor(IEditor *editor = 0, bool emitAboutSave = true) = 0;
     virtual bool saveEditorAs(IEditor *editor = 0) = 0;
-    virtual bool saveAllEditors() = 0;
+    virtual bool saveAllEditors(bool emitAboutSave = true) = 0;
     virtual bool closeEditor(IEditor *editor = 0) = 0;
     virtual bool closeAllEditors() = 0;
 signals:
@@ -369,6 +428,16 @@ public:
     virtual QByteArray saveState() const {return QByteArray(); }
     virtual bool restoreState(const QByteArray &) { return false; }
     virtual void onActive(){}
+};
+
+class IWebKitBrowser : public IBrowserEditor
+{
+    Q_OBJECT
+public:
+    IWebKitBrowser(QObject *parent = 0)  : IBrowserEditor(parent) {}
+    virtual void openUrl(const QUrl &url) = 0;
+signals:
+    void loadFinished(bool);
 };
 
 class IProject : public IView
@@ -546,9 +615,14 @@ class IGoProxy : public QObject
 public:
     IGoProxy(QObject *parent) : QObject(parent) {}
     virtual bool isValid() const = 0;
+    virtual bool isRunning() const = 0;
+    virtual QByteArray commandId() const = 0;
+    virtual void writeStdin(const QByteArray &data) = 0;
 signals:
-    void error(const QByteArray &id, int err);
-    void done(const QByteArray &id, const QByteArray &args);
+    void started();
+    void stdoutput(const QByteArray &data);
+    void stderror(const QByteArray &data);
+    void finished(int code, const QByteArray &msg);
 public slots:
     virtual void call(const QByteArray &id, const QByteArray &args = QByteArray()) = 0;
 };
@@ -606,7 +680,7 @@ public:
     PluginInfo() : m_mustLoad(false)
     {}
     virtual ~PluginInfo() {}
-    QString anchor() const { return m_anchor; }
+    QString author() const { return m_author; }
     QString info() const { return m_info; }
     QString id() const { return m_id; }
     QString name() const { return m_name; }
@@ -614,7 +688,7 @@ public:
     QStringList dependList() const { return m_dependList; }
     QString filePath() const { return m_filePath; }
     bool isMustLoad() const { return m_mustLoad; }
-    void setAnchor(const QString &anchor) { m_anchor = anchor; }
+    void setAuthor(const QString &author) { m_author = author; }
     void setInfo(const QString &info) { m_info = info; }
     void setId(const QString &id) { m_id = id.toLower(); }
     void setName(const QString &name) { m_name = name; }
@@ -624,7 +698,7 @@ public:
     void appendDepend(const QString &depend) { m_dependList.append(depend); }
     void setMustLoad(bool b) { m_mustLoad = b; }
 protected:
-    QString m_anchor;
+    QString m_author;
     QString m_info;
     QString m_id;
     QString m_name;
@@ -696,18 +770,26 @@ public:
     }
 };
 
-inline void gotoLine(IApplication *app, const QString &fileName, int line, int col) {
-    app->editorManager()->addNavigationHistory();
+inline bool gotoLine(IApplication *app, const QString &fileName, int line, int col, bool forceCenter, bool saveHistory) {
+    if (saveHistory) {
+        app->editorManager()->addNavigationHistory();
+    }
+    IEditor *cur = app->editorManager()->currentEditor();
     IEditor *edit = app->fileManager()->openEditor(fileName);
     ITextEditor *textEdit = getTextEditor(edit);
     if (textEdit) {
-        textEdit->gotoLine(line,col);
+        if (cur == edit) {
+            textEdit->gotoLine(line,col,forceCenter);
+        } else {
+            textEdit->gotoLine(line,col,true);
+        }
+        return true;
     }
+    return false;
 }
 
-inline QSize getToolBarIconSize() {
-    const QSettings settings(QSettings::IniFormat,QSettings::UserScope,"liteide","liteide");
-    int v = settings.value("General/ToolBarIconSize",0).toInt();
+inline QSize getToolBarIconSize(LiteApi::IApplication *app) {
+    int v = app->settings()->value("General/ToolBarIconSize",0).toInt();
     switch (v) {
     case 0:
         return QSize(16,16);
@@ -723,9 +805,28 @@ inline QSize getToolBarIconSize() {
     return QSize(16,16);
 }
 
+inline IWebKitBrowser *getWebKitBrowser(LiteApi::IApplication *app)
+{
+    return static_cast<IWebKitBrowser*>(app->extension()->findObject("LiteApp.IWebKitBrowser"));
+}
+
+inline QString getGotools(LiteApi::IApplication *app)
+{
+#ifdef Q_OS_WIN
+    return app->applicationPath()+"/gotools.exe";
+#else
+    return app->applicationPath()+"/gotools";
+#endif
+}
+
+inline QString findPackageByMimeType(LiteApi::IApplication *app, const QString mimeType)
+{
+    return app->mimeTypeManager()->findPackageByMimeType(mimeType);
+}
+
 } //namespace LiteApi
 
-Q_DECLARE_INTERFACE(LiteApi::IPluginFactory,"LiteApi.IPluginFactory/X20")
+Q_DECLARE_INTERFACE(LiteApi::IPluginFactory,"LiteApi.IPluginFactory/X27.2")
 
 
 #endif //__LITEAPI_H__

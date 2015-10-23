@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -42,6 +42,7 @@
 #include <QComboBox>
 #include <QTextCodec>
 #include <QClipboard>
+#include <QLabel>
 #include <QDebug>
 #include "litetabwidget.h"
 #include "fileutil/fileutil.h"
@@ -59,7 +60,7 @@
 
 EditorManager::~EditorManager()
 {
-    m_liteApp->settings()->setValue(LITEAPP_SHOWEDITTOOLBAR,m_editToolbarAct->isChecked());
+    //m_liteApp->settings()->setValue(LITEAPP_SHOWEDITTOOLBAR,m_editToolbarAct->isChecked());
     delete m_tabContextFileMenu;
     delete m_tabContextNofileMenu;
     delete m_editorTabWidget;
@@ -75,12 +76,14 @@ bool EditorManager::initWithApp(IApplication *app)
         return false;
     }
     m_nullMenu = new QMenu;
+    m_nullMenu->setEnabled(false);
     m_currentNavigationHistoryPosition = 0;
     m_colorStyleScheme = new ColorStyleScheme(this);
     m_widget = new QWidget;
-    m_editorTabWidget = new LiteTabWidget;
+    m_editorTabWidget = new LiteTabWidget(LiteApi::getToolBarIconSize(m_liteApp));
 
-    m_editorTabWidget->tabBar()->setTabsClosable(m_liteApp->settings()->value(LITEAPP_EDITTABSCLOSABLE,false).toBool());
+    m_editorTabWidget->tabBar()->setTabsClosable(m_liteApp->settings()->value(LITEAPP_EDITTABSCLOSABLE,true).toBool());
+    m_editorTabWidget->tabBar()->setEnableWheel(m_liteApp->settings()->value(LITEAPP_EDITTABSENABLEWHELL,true).toBool());
 
     //m_editorTabWidget->tabBar()->setIconSize(LiteApi::getToolBarIconSize());
 //    m_editorTabWidget->tabBar()->setStyleSheet("QTabBar::tab{border:1px solid} QTabBar::close-button {margin:0px; image: url(:/images/closetool.png); subcontrol-position: left;}"
@@ -90,11 +93,11 @@ bool EditorManager::initWithApp(IApplication *app)
     mainLayout->setMargin(1);
     mainLayout->setSpacing(0);
 
-    QToolBar *toolBar = m_editorTabWidget->headerToolBar();
-    toolBar->setObjectName("toolbar/tabs");
-    m_liteApp->actionManager()->insertToolBar(toolBar);
-    m_editorTabWidget->headerToolBar()->setAllowedAreas(Qt::TopToolBarArea|Qt::BottomToolBarArea);
-
+//    QToolBar *toolBar = m_editorTabWidget->headerToolBar();
+//    toolBar->setObjectName("toolbar/tabs");
+//    m_liteApp->actionManager()->insertToolBar(toolBar);
+//    m_editorTabWidget->headerToolBar()->setAllowedAreas(Qt::TopToolBarArea|Qt::BottomToolBarArea);
+    mainLayout->addWidget(m_editorTabWidget->tabBarWidget());
     mainLayout->addWidget(m_editorTabWidget->stackedWidget());
     m_widget->setLayout(mainLayout);
 
@@ -109,7 +112,7 @@ bool EditorManager::initWithApp(IApplication *app)
     m_tabContextNofileMenu = new QMenu;
     m_tabContextIndex = -1;
     QAction *closeAct = new QAction(tr("Close"),this);
-    closeAct->setShortcut(QKeySequence("Ctrl+W"));    
+    closeAct->setShortcut(QKeySequence("Ctrl+W"));
     QAction *closeOthersAct = new QAction(tr("Close Others"),this);
     QAction *closeAllAct = new QAction(tr("Close All"),this);
     QAction *closeLeftAct = new QAction(tr("Close Left Tabs"),this);
@@ -151,6 +154,12 @@ bool EditorManager::initWithApp(IApplication *app)
     connect(copyPathToClipboard,SIGNAL(triggered()),this,SLOT(tabContextCopyPathToClipboard()));
     connect(showInExplorer,SIGNAL(triggered()),this,SLOT(tabContextShowInExplorer()));
     connect(moveToAct,SIGNAL(triggered()),this,SLOT(moveToNewWindow()));
+    connect(qApp,SIGNAL(focusChanged(QWidget*,QWidget*)),this,SLOT(focusChanged(QWidget*,QWidget*)));
+
+    QStatusBar *bar = m_liteApp->mainWindow()->statusBar();
+
+    m_lineInfo = new QLabel("000:000");
+    bar->addPermanentWidget(m_lineInfo);
 
     return true;
 }
@@ -167,11 +176,22 @@ void EditorManager::createActions()
     m_goBackAct = new QAction(tr("Navigate Backward"),this);
     m_goBackAct->setIcon(QIcon("icon:images/backward.png"));
     IActionContext *actionContext = m_liteApp->actionManager()->getActionContext(m_liteApp,"App");
+#ifdef Q_OS_MAC
+    actionContext->regAction(m_goBackAct,"Backward","Ctrl+Alt+Left");
+#else
     actionContext->regAction(m_goBackAct,"Backward","Alt+Left");
+#endif
 
     m_goForwardAct = new QAction(tr("Navigate Forward"),this);
     m_goForwardAct->setIcon(QIcon("icon:images/forward.png"));
+#ifdef Q_OS_MAC
+    actionContext->regAction(m_goForwardAct,"Forward","Ctrl+Alt+Right");
+#else
     actionContext->regAction(m_goForwardAct,"Forward","Alt+Right");
+#endif
+
+    m_liteApp->actionManager()->insertViewMenu(LiteApi::ViewMenuLastPos,m_goBackAct);
+    m_liteApp->actionManager()->insertViewMenu(LiteApi::ViewMenuLastPos,m_goForwardAct);
 
     updateNavigatorActions();
 
@@ -182,12 +202,12 @@ void EditorManager::createActions()
     connect(m_goBackAct,SIGNAL(triggered()),this,SLOT(goBack()));
     connect(m_goForwardAct,SIGNAL(triggered()),this,SLOT(goForward()));
 
-    m_editToolbarAct = new QAction(tr("Edit Toolbar"),this);
-    m_editToolbarAct->setCheckable(true);
-    m_editToolbarAct->setChecked(m_liteApp->settings()->value(LITEAPP_SHOWEDITTOOLBAR,true).toBool());
-    m_liteApp->actionManager()->insertViewMenu(LiteApi::ViewMenuToolBarPos,m_editToolbarAct);
+//    m_editToolbarAct = new QAction(tr("Edit Toolbar"),this);
+//    m_editToolbarAct->setCheckable(true);
+//    m_editToolbarAct->setChecked(m_liteApp->settings()->value(LITEAPP_SHOWEDITTOOLBAR,true).toBool());
+//    m_liteApp->actionManager()->insertViewMenu(LiteApi::ViewMenuToolBarPos,m_editToolbarAct);
 
-    connect(m_editToolbarAct,SIGNAL(triggered(bool)),this,SIGNAL(editToolbarVisibleChanged(bool)));
+//    connect(m_editToolbarAct,SIGNAL(triggered(bool)),this,SIGNAL(editToolbarVisibleChanged(bool)));
 }
 
 QWidget *EditorManager::widget()
@@ -237,7 +257,11 @@ void EditorManager::addEditor(IEditor *editor)
         m_widgetEditorMap.insert(w,editor);
         emit editorCreated(editor);
         connect(editor,SIGNAL(modificationChanged(bool)),this,SLOT(modificationChanged(bool)));
-        emit editToolbarVisibleChanged(m_editToolbarAct->isChecked());
+        //emit editToolbarVisibleChanged(m_editToolbarAct->isChecked());
+        LiteApi::IEditContext *context = LiteApi::getEditContext(editor);
+        if (context) {
+            this->addEditContext(context);
+        }
     }
 }
 
@@ -365,6 +389,10 @@ bool EditorManager::closeEditor(IEditor *editor)
             return true;
         }
     }
+    LiteApi::IEditContext *context = LiteApi::getEditContext(cur);
+    if (context) {
+        this->removeEditContext(context);
+    }
     cur->deleteLater();
     return true;
 }
@@ -435,11 +463,11 @@ bool EditorManager::saveEditorAs(IEditor *editor)
     return true;
 }
 
-bool EditorManager::saveAllEditors()
+bool EditorManager::saveAllEditors(bool emitAboutSave)
 {
     QList<IEditor*> editorList = m_widgetEditorMap.values();
     foreach (IEditor *editor, editorList) {
-        saveEditor(editor);
+        saveEditor(editor,emitAboutSave);
     }
     return true;
 }
@@ -465,7 +493,7 @@ IEditor *EditorManager::currentEditor() const
     return m_currentEditor;
 }
 
-void EditorManager::setCurrentEditor(IEditor *editor)
+void EditorManager::setCurrentEditor(IEditor *editor, bool ignoreNavigationHistory)
 {
     if (m_currentEditor == editor) {
         if (m_currentEditor) {
@@ -473,13 +501,22 @@ void EditorManager::setCurrentEditor(IEditor *editor)
         }
         return;
     }
+    if (editor && !ignoreNavigationHistory) {
+        this->addNavigationHistory();
+    }
     m_currentEditor = editor;
-
+    this->updateEditInfo("");
     if (editor != 0) {
         m_editorTabWidget->setCurrentWidget(editor->widget());
         editor->onActive();
+    }
+    /*
         QMenu *menu = LiteApi::getEditMenu(editor);
         if (menu) {
+#if defined(Q_OS_OSX)
+            // dirty trick to show the correct edit menu at the first time on Mac OS X
+            m_editMenu->setEnabled(false);
+#endif
             m_editMenu->menuAction()->setMenu(menu);
         } else {
             m_editMenu->menuAction()->setMenu(m_nullMenu);
@@ -489,7 +526,7 @@ void EditorManager::setCurrentEditor(IEditor *editor)
         m_editMenu->menuAction()->setMenu(m_nullMenu);
         m_editMenu->setEnabled(false);
     }
-
+    */
     emit currentEditorChanged(editor);
 }
 
@@ -558,7 +595,7 @@ IEditor *EditorManager::openEditor(const QString &fileName, const QString &mimeT
                 }
             }
         }
-    }
+    }   
     if (editor) {
         ITextEditor *textEditor = getTextEditor(editor);
         if (textEditor) {
@@ -623,17 +660,22 @@ void EditorManager::addNavigationHistory(IEditor *editor,const QByteArray &saveS
         state = saveState;
     }
 
+    m_currentNavigationHistoryPosition = qMin(m_currentNavigationHistoryPosition, m_navigationHistory.size()); // paranoia    
+    if (m_currentNavigationHistoryPosition > 0 && m_currentNavigationHistoryPosition <= m_navigationHistory.size()) {
+        EditLocation &prev = m_navigationHistory[m_currentNavigationHistoryPosition-1];
+        if (prev.filePath == filePath && prev.state == state) {
+            return;
+        }
+    }
     EditLocation location;
     location.filePath = filePath;
     location.state = state;
 
-    m_currentNavigationHistoryPosition = qMin(m_currentNavigationHistoryPosition, m_navigationHistory.size()); // paranoia
-
     m_navigationHistory.insert(m_currentNavigationHistoryPosition, location);
     ++m_currentNavigationHistoryPosition;
 
-    while (m_navigationHistory.size() >= 30) {
-        if (m_currentNavigationHistoryPosition > 15) {
+    while (m_navigationHistory.size() >= 100) {
+        if (m_currentNavigationHistoryPosition > 50) {
             m_navigationHistory.removeFirst();
             --m_currentNavigationHistoryPosition;
         } else {
@@ -646,16 +688,15 @@ void EditorManager::addNavigationHistory(IEditor *editor,const QByteArray &saveS
 void EditorManager::goBack()
 {
     updateCurrentPositionInNavigationHistory();
-    while (m_currentNavigationHistoryPosition > 0) {
+    if (m_currentNavigationHistoryPosition > 0) {
         --m_currentNavigationHistoryPosition;
         EditLocation location = m_navigationHistory.at(m_currentNavigationHistoryPosition);
-        IEditor *editor = m_liteApp->fileManager()->openEditor(location.filePath,true);
+        IEditor *editor = m_liteApp->fileManager()->openEditor(location.filePath,true,true);
         if (editor) {
             editor->restoreState(location.state);
         } else {
             m_navigationHistory.removeAt(m_currentNavigationHistoryPosition);
         }
-        break;
     }
     updateNavigatorActions();
 }
@@ -667,7 +708,7 @@ void EditorManager::goForward()
         return;
     ++m_currentNavigationHistoryPosition;
     EditLocation location = m_navigationHistory.at(m_currentNavigationHistoryPosition);
-    IEditor *editor = m_liteApp->fileManager()->openEditor(location.filePath);
+    IEditor *editor = m_liteApp->fileManager()->openEditor(location.filePath,true,true);
     if (!editor) {
         return;
     }
@@ -697,6 +738,21 @@ void EditorManager::loadColorStyleScheme(const QString &fileName)
 const ColorStyleScheme *EditorManager::colorStyleScheme() const
 {
     return m_colorStyleScheme;
+}
+
+void EditorManager::addEditContext(IEditContext *context)
+{
+    m_editContextMap.insert(context->focusWidget(),context);
+}
+
+void EditorManager::removeEditContext(IEditContext *context)
+{
+    m_editContextMap.remove(context->focusWidget());
+}
+
+void EditorManager::updateEditInfo(const QString &info)
+{
+    m_lineInfo->setText(info);
 }
 
 void EditorManager::updateCurrentPositionInNavigationHistory()
@@ -798,8 +854,7 @@ void EditorManager::tabContextShowInExplorer()
     if (filePath.isEmpty()) {
         return;
     }
-    QFileInfo info(filePath);
-    QDesktopServices::openUrl(info.absolutePath());
+    FileUtil::openInExplorer(filePath);
 }
 
 void EditorManager::tabContextCloseOtherFolderFiles()
@@ -887,6 +942,29 @@ void EditorManager::moveToNewWindow()
     QFileInfo info(filePath);
     if (app->fileManager()->openEditor(filePath)) {
         this->closeEditor(ed);
-        app->fileManager()->openFolderEx(info.path());
+        app->fileManager()->addFolderList(info.path());
+    }
+}
+
+void EditorManager::focusChanged(QWidget *old, QWidget *now)
+{
+    IEditContext *context = m_editContextMap.value(now);
+    if (context && context->focusMenu()) {
+#if defined(Q_OS_OSX)
+        // dirty trick to show the correct edit menu at the first time on Mac OS X
+        m_editMenu->setEnabled(false);
+#endif
+        m_editMenu->menuAction()->setMenu(context->focusMenu());
+        m_editMenu->setEnabled(true);
+    } else {
+        m_editMenu->menuAction()->setMenu(m_nullMenu);
+        m_editMenu->setEnabled(false);
+    }
+    if (context && context->focusToolBar()) {
+        context->focusToolBar()->setEnabled(true);
+    }
+    context = m_editContextMap.value(old);
+    if (context && context->focusToolBar()) {
+        context->focusToolBar()->setEnabled(false);
     }
 }

@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -29,8 +29,6 @@
 
 #include <QElapsedTimer>
 
-#define TEXTOUTPUT_USECOLORSCHEME "textoutput/usecolorscheme"
-
 class TextOutput : public TerminalEdit
 {
     Q_OBJECT
@@ -38,12 +36,12 @@ public:
     explicit TextOutput(LiteApi::IApplication *app, bool readOnly = true, QWidget *parent = 0);
     void append(const QString &text);
     void append(const QString &text,const QBrush &foreground);
-    void appendTag(const QString &text, bool error = false);
-    void updateExistsTextColor();
+    void appendTag(const QString &text, bool error = false, bool time = false);
+    void updateExistsTextColor(bool force = false);
     void setMaxLine(int max);
 public slots:
-    void appLoaded();
     void loadColorStyleScheme();
+    void applyOption(QString);
 protected:
     void appendAndReset(const QString &text, QTextCharFormat& f);
     LiteApi::IApplication *m_liteApp;

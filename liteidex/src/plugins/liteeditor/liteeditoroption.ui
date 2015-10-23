@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>479</width>
-    <height>266</height>
+    <height>330</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -160,13 +160,6 @@
             </item>
            </layout>
           </item>
-          <item>
-           <widget class="QCheckBox" name="outputUseColorSchemeCheck">
-            <property name="text">
-             <string>Apply color scheme to text output widgets</string>
-            </property>
-           </widget>
-          </item>
          </layout>
         </widget>
        </item>
@@ -198,6 +191,9 @@
          <layout class="QHBoxLayout" name="horizontalLayout_5">
           <item>
            <widget class="QCheckBox" name="autoBraces0CheckBox">
+            <property name="toolTip">
+             <string notr="true"/>
+            </property>
             <property name="text">
              <string notr="true">{}</string>
             </property>
@@ -205,6 +201,9 @@
           </item>
           <item>
            <widget class="QCheckBox" name="autoBraces1CheckBox">
+            <property name="toolTip">
+             <string notr="true"/>
+            </property>
             <property name="text">
              <string notr="true"> ()</string>
             </property>
@@ -212,6 +211,9 @@
           </item>
           <item>
            <widget class="QCheckBox" name="autoBraces2CheckBox">
+            <property name="toolTip">
+             <string notr="true"/>
+            </property>
             <property name="text">
              <string notr="true">[]</string>
             </property>
@@ -219,15 +221,31 @@
           </item>
           <item>
            <widget class="QCheckBox" name="autoBraces3CheckBox">
+            <property name="toolTip">
+             <string notr="true"/>
+            </property>
             <property name="text">
-             <string notr="true"> '</string>
+             <string notr="true">''</string>
             </property>
            </widget>
           </item>
           <item>
            <widget class="QCheckBox" name="autoBraces4CheckBox">
+            <property name="toolTip">
+             <string notr="true"/>
+            </property>
             <property name="text">
-             <string notr="true">&quot;</string>
+             <string notr="true">&quot;&quot;</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="autoBraces5CheckBox">
+            <property name="toolTip">
+             <string/>
+            </property>
+            <property name="text">
+             <string notr="true">``</string>
             </property>
            </widget>
           </item>
@@ -348,6 +366,20 @@
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_8">
           <item>
+           <widget class="QCheckBox" name="codeFoldVisibleCheckBox">
+            <property name="text">
+             <string>Display code fold</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="visualizeWhitespaceCheckBox">
+            <property name="text">
+             <string>Display VisualizeWhitespace</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QCheckBox" name="eofVisibleCheckBox">
             <property name="text">
              <string>Display EOF</string>
@@ -411,6 +443,13 @@
              </spacer>
             </item>
            </layout>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="offsetCheckBox">
+            <property name="text">
+             <string>Display offset position</string>
+            </property>
+           </widget>
           </item>
          </layout>
         </widget>

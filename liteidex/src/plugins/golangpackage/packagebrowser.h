@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -45,12 +45,6 @@ namespace PackageType {
     };
 }
 
-struct PathData
-{
-    QString     path;
-    QByteArray  data;
-};
-
 class QStandardItemModel;
 class PackageBrowser : public QObject
 {
@@ -61,27 +55,23 @@ public:
 signals:
     
 public slots:    
-    void appLoaded();
-    void triggeredToolWindow(bool);
+    void toggledToolWindow(bool);
     void currentEnvChanged(LiteApi::IEnv*);
     void reloadAll();
     void setupGopath();
     void loadPackageDoc();
-    void loadPackageFolder();
+    void loadPackageInNewWindow();
     void addPackageToFolders();
     void finished(int,QProcess::ExitStatus);
     void error(QProcess::ProcessError);
     void customContextMenuRequested(QPoint);
     void doubleClicked();
-    void resetTree();
+    void resetTree(const QByteArray &jsonData);
     void copyPackageName();
     void fileWizardFinished(const QString &type, const QString &scheme, const QString &location);
 protected:
     bool loadPackageFolderHelper(QModelIndex index, bool add = false);
 protected:
-    QStringList m_taskList;
-    QList<PathData> m_taskData;
-    QStringList m_gopathList;
     LiteApi::IApplication *m_liteApp;
     QWidget      *m_widget;
     SymbolTreeView    *m_treeView;
@@ -95,7 +85,7 @@ protected:
     QAction     *m_reloadAct;
     QAction     *m_setupGopathAct;
     QAction     *m_godocAct;
-    QAction     *m_loadPackageFolderAct;
+    QAction     *m_loadPackageInNewWindowAct;
     QAction     *m_addToFoldersAct;
     QAction     *m_openSrcAct;
     QAction     *m_copyNameAct;

@@ -13,12 +13,15 @@ SUBDIRS = \
     litetty \
     filebrowser \
     golangast \
-    golangpresent \
+    golangedit \
     golangfmt \
     golangcode \
     golangdoc \
     golangplay \
     golangpackage \
+    golangpresent \
     gdbdebugger \
     markdown \
+    jsonedit \
     webkithtmlwidget \
+    rustedit

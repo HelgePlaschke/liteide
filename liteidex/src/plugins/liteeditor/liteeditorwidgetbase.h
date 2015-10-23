@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -27,10 +27,12 @@
 #include <QPlainTextEdit>
 #include <QTextBlock>
 #include "liteeditorapi/liteeditorapi.h"
-
+#include "qtc_texteditor/autocompleter.h"
+#include "qtc_texteditor/basetextblockselection.h"
 
 class NavigateManager;
-class NavigateMark;
+struct NavigateMark;
+
 class LiteEditorWidgetBase : public QPlainTextEdit
 {
     Q_OBJECT
@@ -40,20 +42,22 @@ public:
         CurrentLine
     };
 
-    LiteEditorWidgetBase(QWidget *parent = 0);
+    LiteEditorWidgetBase(LiteApi::IApplication *app, QWidget *parent = 0);
     virtual ~LiteEditorWidgetBase();
     void initLoadDocument();
     void setTabSize(int n);
     int tabSize() const;
     void updateTabWidth();
-    void setTabUseSpace(bool b);
+    void setTabToSpaces(bool b);
     void setEditorMark(LiteApi::IEditorMark *mark);
+    void setTextLexer(LiteApi::ITextLexer *lexer);
 public:
     QWidget* extraArea();
     QWidget* navigateArea();
     void setExtraColor(const QColor &foreground,const QColor &background);
     void setCurrentLineColor(const QColor &background);
     void setIndentLineColor(const QColor &foreground);
+    void setVisualizeWhitespaceColor(const QColor &foreground);
     int extraAreaWidth();
     void extraAreaPaintEvent(QPaintEvent *e);
     void extraAreaMouseEvent(QMouseEvent *e);
@@ -71,17 +75,19 @@ public:
     void cleanWhitespace(QTextCursor &cursor, bool inEntireDocument);
     void ensureFinalNewLine(QTextCursor& cursor);
     void setNavigateHead(LiteApi::EditorNaviagteType type, const QString &msg);
-    void insertNavigateMark(int line, LiteApi::EditorNaviagteType type, const QString &msg);
-    void clearAllNavigateMark(LiteApi::EditorNaviagteType types);
+    void insertNavigateMark(int line, LiteApi::EditorNaviagteType type, const QString &msg, const char* tag);
+    void clearAllNavigateMark(LiteApi::EditorNaviagteType types, const char *tag);
+    void clearAllNavigateMarks();
 signals:
     void navigationStateChanged(const QByteArray &array);
     void overwriteModeChanged(bool);
     void wordWrapChanged(bool);
+    void updateLink(const QTextCursor &curosr, const QPoint &pos, bool nav);
 public:
+    void saveCurrentCursorPositionForNavigation();
     bool restoreState(const QByteArray &state);
     QByteArray saveState() const;
 protected:
-    void saveCurrentCursorPositionForNavigation();
     QByteArray m_tempNavigationState;
 public slots:
     void cleanWhitespace(bool wholeDocument = false);
@@ -91,7 +97,7 @@ public slots:
     virtual void slotModificationChanged(bool);
     virtual void slotUpdateRequest(const QRect &r, int dy);
     virtual void slotCursorPositionChanged();
-    virtual void updateSelection();
+    virtual void slotSelectionChanged();
     virtual void slotUpdateBlockNotify(const QTextBlock &);
     QChar characterAt(int pos) const;
     void handleHomeKey(bool anchor);    
@@ -105,12 +111,27 @@ public slots:
     void gotoLineStartWithSelection();
     void gotoLineEnd();
     void gotoLineEndWithSelection();
+
     void duplicate();
+
     void cutLine();
     void copyLine();
-    void deleteLine();    
+    void deleteLine();
+
+    void deleteEndOfWord();
+    void deleteStartOfWord();
+
+    void moveLineUp();
+    void moveLineDown();
+
+    void copyLineUp();
+    void copyLineDown();
+
+    void joinLines();
+
     void insertLineBefore();
     void insertLineAfter();
+
     void gotoPrevBlock();
     void gotoNextBlock();
     void selectBlock();
@@ -123,9 +144,11 @@ public slots:
     void foldAll();
     void unfoldAll();
     void updateBlock(QTextBlock);
+    void documentSizeChanged(QSizeF);
     void moveCursorVisible(bool ensureVisible);
     void toggleBlockVisible(const QTextBlock &block);
     void foldIndentChanged(QTextBlock block);
+    void autoIndent();
 public:
     void setAutoIndent(bool b){
         m_autoIndent = b;
@@ -145,6 +168,9 @@ public:
     void setAutoBraces4(bool b) {
         m_autoBraces4 = b;
     }
+    void setAutoBraces5(bool b) {
+        m_autoBraces5 = b;
+    }
     void setLineNumberVisible(bool b) {
         m_lineNumbersVisible = b;
         slotUpdateExtraAreaWidth();
@@ -156,9 +182,6 @@ public:
     void setMarksVisible(bool b) {
         m_marksVisible = b;
         slotUpdateExtraAreaWidth();
-    }
-    bool autoIndent() const {
-        return m_autoIndent;
     }
     bool lineNumberVisible() const {
         return m_lineNumbersVisible;
@@ -181,6 +204,12 @@ public:
     void setEofVisible(bool b) {
         m_eofVisible = b;
     }
+    void setCodeFoldVisible(bool b) {
+        m_codeFoldingVisible = b;
+    }
+    bool codeFoldVisible() const {
+        return m_codeFoldingVisible;
+    }
     void setIndentLineVisible(bool b) {
         m_indentLineVisible = b;
     }
@@ -188,37 +217,78 @@ public:
         return m_indentLineVisible;
     }
     bool isWordWrap() const;
+    void setWordWrap(bool wrap);
+    void maybeSelectLine();
+    bool isSpellCheckingAt(QTextCursor cur) const;
+    void showLink(const LiteApi::Link &link);
+    void clearLink();
+    bool openLink(const LiteApi::Link &link);
+    void testUpdateLink(QMouseEvent *e);
+    void setExtraSelections(LiteApi::ExtraSelectionKind kind, const QList<QTextEdit::ExtraSelection> &selections);
+    LiteApi::ITextLexer * textLexer() const {
+        return m_textLexer.data();
+    }
+    QString autoCompleteSurroundText(QTextCursor &cursor, const QString &textToInsert) const;
+    bool checkIsMatchBraces(QTextCursor &cursor, const QString &textToInsert) const;
+    bool autoBackspace(QTextCursor &cursor);
+    void handleBackspaceKey();
+    void setVisualizeWhitespace(bool b);
+    QRectF selectionRect(const QTextCursor &cursor);
 protected:
     void drawFoldingMarker(QPainter *painter, const QPalette &pal,
                            const QRect &rect,
                            bool expanded) const;
-    void maybeSelectLine();
-    void setWordWrap(bool wrap);
     bool event(QEvent *e);
     void keyPressEvent(QKeyEvent *e);
+    void keyReleaseEvent(QKeyEvent *e);
+    void leaveEvent(QEvent *e);
     void paintEvent(QPaintEvent *);
     void mousePressEvent(QMouseEvent *e);
+    void mouseReleaseEvent(QMouseEvent *e);
     void mouseMoveEvent(QMouseEvent *e);
+    bool viewportEvent(QEvent *);
+    void inputMethodEvent(QInputMethodEvent *e);
     void indentBlock(QTextBlock block, bool bIndent);
     void indentCursor(QTextCursor cur, bool bIndent);
     void indentText(QTextCursor cur, bool bIndent);
     void indentEnter(QTextCursor cur);
     QString tabText(int n = 1) const;
     QTextBlock foldedBlockAt(const QPoint &pos, QRect *box = 0) const;
-    bool isSpellCheckingAt(QTextCursor cur) const;
+    void moveLineUpDown(bool up);
+    void copyLineUpDown(bool up);
+    const TextEditor::TabSettings &tabSettings() const;
+    void clearBlockSelection();
+    QString copyBlockSelection() const;
+    void removeBlockSelection(const QString &text = QString());
+    bool selectionVisible(int blockNumber) const;
+    void handleBlockSelection(int diff_row, int diff_col);
+public slots:
+    virtual void copy();
+    virtual void paste();
+    virtual void cut();
+    virtual void selectAll();
+protected slots:
+    void uplinkDeployTimeout();
+    void uplinkInfoTimeout();
+    void stopUplinkTimer();
 protected:
+    LiteApi::IApplication *m_liteApp;
     QWidget *m_extraArea;
     QWidget *m_navigateArea;
     LiteApi::IEditorMark *m_editorMark;
-    QList<QTextEdit::ExtraSelection> m_extraSelections;
+    QScopedPointer<LiteApi::ITextLexer> m_textLexer;
+    QMap<LiteApi::ExtraSelectionKind,QList<QTextEdit::ExtraSelection> > m_extralSelectionMap;
     QTextCursor m_lastSelection;
     QColor  m_extraForeground;
     QColor  m_extraBackground;
     QColor  m_indentLineForeground;
     QColor  m_currentLineBackground;
+    QColor  m_visualizeWhitespaceForeground;
     QRegExp m_selectionExpression;
     QRegExp m_findExpression;
     QTextDocument::FindFlags m_findFlags;
+    LiteApi::Link       m_currentLink;
+    bool m_moveLineUndoHack;
     bool m_defaultWordWrap;
     bool m_wordWrapOverridden;
     bool m_wordWrap;
@@ -229,6 +299,7 @@ protected:
     bool m_rightLineVisible;
     bool m_eofVisible;
     int  m_rightLineWidth;
+    int  m_inputCursorOffset;
     bool m_indentLineVisible;
     bool m_autoIndent;
     bool m_autoBraces0; //{
@@ -236,16 +307,32 @@ protected:
     bool m_autoBraces2; //[
     bool m_autoBraces3; //'
     bool m_autoBraces4; //"
+    bool m_autoBraces5; //`
     bool m_bLastBraces;
     bool m_bTabUseSpace;
+    bool m_mouseNavigation;
+    bool m_showLinkNavigation;
+    bool m_showLinkInfomation;
+    QString m_lastBraceText;
     int  m_nTabSize;
-    QString m_lastBraces;
     int m_lastSaveRevision;
     int m_extraAreaSelectionNumber;
+    int m_averageCharWidth;
+    int m_lastLine;
+    int m_upToolTipTime;
+    QTimer *m_upToolTipDeployTimer;
+    QTimer *m_upToolTipTimer;
+    QPoint m_upToolTipPos;
+    QPoint m_lastUpToolTipPos;
+    bool m_linkPressed;
+    bool m_uplinkSkip;
     bool m_mouseOnFoldedMarker;
     bool m_contentsChanged;
     bool m_lastCursorChangeWasInteresting;
+    bool m_visualizeWhitespace;
     NavigateManager *m_navigateManager;
+    bool m_inBlockSelectionMode;
+    TextEditor::BaseTextBlockSelection m_blockSelection;
 };
 
 #endif // LITEEDITORWIDGETBASE_H

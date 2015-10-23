@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -108,6 +108,7 @@ DebugWidget::DebugWidget(LiteApi::IApplication *app, QObject *parent) :
     connect(m_addLocalWatchAct,SIGNAL(triggered()),this,SLOT(addLocalWatch()));
     connect(m_removeWatchAct,SIGNAL(triggered()),this,SLOT(removeWatch()));
     connect(m_removeAllWatchAct,SIGNAL(triggered()),this,SLOT(removeAllWatchAct()));
+    connect(m_statckView,SIGNAL(clicked(QModelIndex)),this,SLOT(stackClicked(QModelIndex)));
 }
 
 DebugWidget::~DebugWidget()
@@ -318,3 +319,15 @@ void DebugWidget::setInputFocus()
 {
     m_debugLogEdit->setFocus();
 }
+
+void DebugWidget::stackClicked(QModelIndex index)
+{
+    if (!index.isValid()) {
+        return;
+    }
+    if (!m_debugger) {
+        return;
+    }
+    m_debugger->showFrame(index);
+}
+

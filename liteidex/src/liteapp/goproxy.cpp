@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -44,14 +44,15 @@ static int godrv_call(const QByteArray &id, const QByteArray &args, DRV_CALLBACK
     return godrv_call_fn((char*)id.constData(),id.length(),(char*)args.constData(),args.length(),cb,ctx);
 }
 
-static void cdrv_callback(char *id, char *reply, int len, int err, void *ctx)
+static void cdrv_callback(char *id, int id_size, char *reply, int len, int err, void *ctx)
 {
-    ((GoProxy*)(ctx))->callback(id,reply,len,err);
+    ((GoProxy*)(ctx))->callback(id,id_size,reply,len,err);
 }
 
 GoProxy::GoProxy(QObject *parent) :
     LiteApi::IGoProxy(parent)
 {
+    m_isRuning = false;
 }
 
 bool GoProxy::isValid() const
@@ -64,17 +65,46 @@ bool GoProxy::hasProxy()
     return godrv_call_fn != 0;
 }
 
+bool GoProxy::isRunning() const
+{
+    return m_isRuning;
+}
+
+QByteArray GoProxy::commandId() const
+{
+    return m_id;
+}
+
+void GoProxy::writeStdin(const QByteArray &data)
+{
+    godrv_call("stdin",data,&cdrv_callback,this);
+}
+
 void GoProxy::call(const QByteArray &id, const QByteArray &args)
-{    
+{
+    m_id = id;
+    m_isRuning = false;
     godrv_call(id,args,&cdrv_callback,this);
 }
 
-void GoProxy::callback(char *id, char *reply, int len, int err)
+void GoProxy::callback(char *id, int id_size, char *reply, int reply_size, int flag)
 {
-    if (err != 0) {
-        emit error(id,err);
-    } else {
-        emit done(id,QByteArray(reply,len));
+    if (m_id != QByteArray(id,id_size)) {
+        return;
+    }
+    if (flag == 0) {
+        m_isRuning = true;
+        emit started();
+    } else if(flag == 1) {
+        emit stdoutput(QByteArray(reply,reply_size));
+    } else if (flag == 2) {
+        emit stderror(QByteArray(reply,reply_size));
+    } else if (flag == 3) {
+        m_isRuning = false;
+        emit finished(0,"");
+    } else if (flag == 4) {
+        m_isRuning = false;
+        emit finished(2,QByteArray(reply,reply_size));
     }
 }
 
@@ -83,7 +113,7 @@ void cdrv_init(void *fn)
     godrv_call_fn = (GODRV_CALL)fn;
 }
 
-void cdrv_cb(DRV_CALLBACK cb, char *id, char *reply, int size, int err, void* ctx)
+void cdrv_cb(DRV_CALLBACK cb, char *id, int id_size, char *reply, int size, int err, void* ctx)
 {
-    cb(id,reply,size,err,ctx);
+    cb(id,id_size,reply,size,err,ctx);
 }

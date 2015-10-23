@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -37,9 +37,12 @@ public:
         m_readline(false),
         m_separator(false),
         m_killold(false),
-        m_navigate(false)
+        m_navigate(false),
+        m_folder(false),
+        m_takeall(false)
     {}
     void setId(const QString &id) { m_id = id; }
+    void setOs(const QString &os) { m_os = os; }
     void setMenu(const QString &menu) { m_menu = menu; }
     void setKey(const QString &key) { m_key = key; }
     void setFunc(const QString &func) { m_func = func; }
@@ -61,6 +64,12 @@ public:
     void setNavigate(const QString &text) {
         m_navigate = QVariant(text).toBool();
     }
+    void setFolder(const QString &text) {
+        m_folder = QVariant(text).toBool();
+    }
+    void setTakeall(const QString &text) {
+        m_takeall = QVariant(text).toBool();
+    }
     void setWork(const QString &work) { m_work = work; }
     void setCodec(const QString &codec) { m_codec = codec; }
     void setRegex(const QString &regex) { m_regex = regex; }
@@ -68,6 +77,7 @@ public:
     void setTask(const QStringList &task) { m_task = task; }
     QString work() const { return m_work; }
     QString id() const { return m_id; }
+    QString os() const { return m_os; }
     QString menu() const { return m_menu; }
     QString key() const { return m_key; }
     QString cmd() const { return m_cmd; }
@@ -77,8 +87,10 @@ public:
     bool isOutput() const { return m_output; }
     bool isReadline() const {return m_readline; }
     bool isSeparator() const { return m_separator; }
+    bool isFolder() const { return m_folder; }
     bool isKillOld() const { return m_killold; }
     bool isNavigate() const { return m_navigate; }
+    bool isTakeall() const { return m_takeall; }
     QString codec() const { return m_codec; }
     QString regex() const { return m_regex; }
     QString img() const { return m_img; }
@@ -97,6 +109,8 @@ public:
         m_readline = false;
         m_separator = false;
         m_killold = false;
+        m_folder = false;
+        m_takeall = false;
     }
     bool isEmpty() {
         return m_id.isEmpty();
@@ -104,6 +118,7 @@ public:
 
 protected:
     QString m_id;
+    QString m_os;
     QString m_key;
     QString m_cmd;
     QString m_func;
@@ -120,6 +135,8 @@ protected:
     bool    m_separator;
     bool    m_killold;
     bool    m_navigate;
+    bool    m_folder;
+    bool    m_takeall;
 };
 
 class BuildLookup
@@ -218,6 +235,7 @@ public:
     virtual QString mimeType() const = 0;
     virtual QString id() const = 0;
     virtual QString work() const = 0;
+    virtual QString lock() const = 0;
     virtual QList<BuildAction*> actionList() const = 0;
     virtual QList<BuildLookup*> lookupList() const = 0;
     virtual QList<BuildConfig*> configList() const = 0;
@@ -266,7 +284,7 @@ public:
     virtual QString envValue(LiteApi::IBuild *build, const QString &value) = 0;
     virtual void appendOutput(const QString &str, const QBrush &brush, bool active, bool updateExistsTextColor = true) = 0;
     virtual void execAction(const QString &mime,const QString &id) = 0;
-    virtual void executeCommand(const QString &cmd, const QString &args, const QString &workDir, bool updateExistsTextColor = true) = 0;
+    virtual void executeCommand(const QString &cmd, const QString &args, const QString &workDir, bool updateExistsTextColor = true, bool activateOutputCheck = true, bool navigate = true, bool command = true) = 0;
     virtual bool buildTests() = 0;
 signals:
     void currentBuildFileChanged(const QString &filePath);

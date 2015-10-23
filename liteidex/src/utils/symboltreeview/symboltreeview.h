@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -40,16 +40,12 @@ class SymbolTreeView : public QTreeView
 public:
     SymbolTreeView(QWidget *parent = 0);
     QModelIndex topViewIndex();
-    const QSet<QModelIndex> & expandIndexs() const;
-    QSet<QModelIndex> & expandIndexs();
+    QList<QModelIndex> expandIndexs() const;
     virtual void reset();
     void saveState(SymbolTreeState *state);
     void loadState(QAbstractItemModel *model,SymbolTreeState *state);
 signals:
     void currentIndexChanged(const QModelIndex &current, const QModelIndex &previous);
-protected slots:
-    void expandedTree(const QModelIndex &index);
-    void collapsedTree(const QModelIndex &index);
 protected:
     void focusInEvent(QFocusEvent *event);
     void focusOutEvent(QFocusEvent *event);
@@ -57,8 +53,13 @@ protected:
     void keyPressEvent(QKeyEvent *event);
 #endif
     void currentChanged(const QModelIndex &current, const QModelIndex &previous);
+    void getTreeExpands(const QModelIndex &parent, QList<QModelIndex> &list) const;
+protected slots:
+    void clickedItem(QModelIndex);
+    void hsbValueChanged(int);
 protected:
-    QSet<QModelIndex>      m_expandIndexs;
+    bool m_bClickedItem;
+    int  m_hsbPos;
 };
 
 #endif //SYMBOLTREEVIEW_H

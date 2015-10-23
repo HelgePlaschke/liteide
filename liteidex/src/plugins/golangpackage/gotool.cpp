@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -89,7 +89,7 @@ bool GoTool::exists()
 void GoTool::reloadEnv()
 {
     QProcessEnvironment env = LiteApi::getGoEnvironment(m_liteApp);
-    m_gotool = FileUtil::lookupGoBin("go",m_liteApp,true);
+    m_gotool = FileUtil::lookupGoBin("go",m_liteApp,false);
     m_process->setProcessEnvironment(env);
 }
 
@@ -128,6 +128,17 @@ void GoTool::start(const QStringList &args)
     m_stdOutput.clear();
     m_stdError.clear();
     m_process->start(m_gotool,args);
+}
+
+void GoTool::start_list_json()
+{
+    this->kill();
+    m_stdOutput.clear();
+    m_stdError.clear();
+    QString cmd = LiteApi::getGotools(m_liteApp);
+    QStringList args;
+    args << "pkgs" << "-list" << "-json";
+    m_process->start(cmd,args);
 }
 
 void GoTool::readError()

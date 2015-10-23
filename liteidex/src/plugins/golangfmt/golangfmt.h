@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -39,6 +39,7 @@ public:
 public slots:
     void fmtStarted();
     void gofmt();
+    void goimports();
     void currentEnvChanged(LiteApi::IEnv*);
     void fmtOutput(QByteArray,bool);
     void fmtFinish(bool,int,QString);
@@ -46,7 +47,7 @@ public slots:
     void editorAboutToSave(LiteApi::IEditor*);
     void applyOption(QString);
     void fmtEditor(LiteApi::IEditor*,bool);
-    void syncfmtEditor(LiteApi::IEditor *, bool save, bool check = true, int timeout = -1);
+    void syncfmtEditor(LiteApi::IEditor *, bool save, bool check = true, int timeout = -1, int fmtStyle = 0);
 protected:
     LiteApi::IApplication *m_liteApp;
     ProcessEx *m_process;

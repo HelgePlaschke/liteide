@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -29,6 +29,7 @@
 #include <QStackedLayout>
 #include <QStackedWidget>
 #include <QToolButton>
+#include <QPushButton>
 #include <QToolBar>
 #include <QAction>
 #include <QActionGroup>
@@ -45,47 +46,52 @@
 #endif
 //lite_memory_check_end
 
-
-LiteTabWidget::LiteTabWidget(QObject *parent) :
+LiteTabWidget::LiteTabWidget(QSize iconSize, QObject *parent) :
     QObject(parent)
 {
-    m_tabBar = new QTabBar;
+    m_tabBar = new TabBar;
     m_tabBar->setExpanding(false);
     m_tabBar->setDocumentMode(true);
     m_tabBar->setDrawBase(false);
     m_tabBar->setUsesScrollButtons(true);
+    m_tabBar->setMovable(true);
+    m_tabBar->setSelectionBehaviorOnRemove(QTabBar::SelectPreviousTab);
 
-    m_headerToolBar = new QToolBar;
-    m_headerToolBar->setObjectName("toolbar.tabs");
-    m_headerToolBar->setIconSize(LiteApi::getToolBarIconSize());
+    m_dumpToolBar = new QToolBar;
+    m_dumpToolBar->setObjectName("toolbar.tabs");
+    m_dumpToolBar->setIconSize(iconSize);
 
-    m_closeTabAct = new QAction(QIcon("icon:images/closepage.png"),tr("Close tab"),this);
-    m_listButton = new QToolButton(m_headerToolBar);
-    m_listButton->setToolTip(tr("List all tabs"));
-    m_listButton->setIcon(QIcon("icon:images/listpage.png"));
+    m_tabBarWidget = new QWidget;
+
     m_addTabAct = new QAction(QIcon("icon:images/addpage.png"),tr("Open a new tab"),this);
-
     m_listActMenu = new QMenu;
     m_listActGroup = new QActionGroup(this);
+
+    m_listButton = new QToolButton(m_dumpToolBar);
+    m_listButton->setToolTip(tr("List All Tabs"));
+    m_listButton->setIcon(QIcon("icon:images/listpage.png"));
     m_listButton->setMenu(m_listActMenu);
     m_listButton->setPopupMode(QToolButton::InstantPopup);
+    m_listButton->setStyleSheet("QToolButton::menu-indicator{image:none;}");
 
-    m_headerToolBar->addWidget(m_tabBar);
+    m_closeTabAct = new QAction(QIcon("icon:images/closetool.png"),tr("Close Tab"),this);
+    m_closeButton = new QToolButton(m_dumpToolBar);
+    m_closeButton->setDefaultAction(m_closeTabAct);
 
-    QWidget *spacer = new QWidget;
-    spacer->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Preferred);
+    QHBoxLayout *layout = new QHBoxLayout;
+    layout->setMargin(0);
+    layout->setSpacing(0);
+    layout->addWidget(m_tabBar,1);
+    layout->addWidget(m_listButton);
+    layout->addWidget(m_closeButton);
 
-    m_headerToolBar->addWidget(spacer);
-    m_headerToolBar->addWidget(m_listButton);
-    m_headerToolBar->addSeparator();
-    m_headerToolBar->addAction(m_addTabAct);
-    m_headerToolBar->addSeparator();
-    m_headerToolBar->addAction(m_closeTabAct);
+    m_tabBarWidget->setLayout(layout);
 
     m_stackedWidget = new QStackedWidget;
 
     connect(m_tabBar,SIGNAL(currentChanged(int)),this,SLOT(tabCurrentChanged(int)));
     connect(m_tabBar,SIGNAL(tabCloseRequested(int)),this,SIGNAL(tabCloseRequested(int)));
+    connect(m_tabBar,SIGNAL(tabMoved(int,int)),this,SLOT(tabMoved(int,int)));
     connect(m_closeTabAct,SIGNAL(triggered()),this,SLOT(closeCurrentTab()));
     connect(m_addTabAct,SIGNAL(triggered()),this,SIGNAL(tabAddRequest()));
     connect(m_listActGroup,SIGNAL(triggered(QAction*)),this,SLOT(selectListActGroup(QAction*)));
@@ -96,6 +102,8 @@ LiteTabWidget::LiteTabWidget(QObject *parent) :
 LiteTabWidget::~LiteTabWidget()
 {
     delete m_listActMenu;
+    delete m_tabBarWidget;
+    delete m_dumpToolBar;
 }
 
 void LiteTabWidget::closeCurrentTab()
@@ -172,7 +180,7 @@ QWidget *LiteTabWidget::currentWidget()
     return m_stackedWidget->currentWidget();
 }
 
-QTabBar *LiteTabWidget::tabBar()
+TabBar *LiteTabWidget::tabBar()
 {
     return m_tabBar;
 }
@@ -182,14 +190,14 @@ QList<QWidget*> LiteTabWidget::widgetList() const
     return m_widgetList;
 }
 
-QToolBar *LiteTabWidget::headerToolBar()
-{
-    return m_headerToolBar;
-}
-
 QWidget *LiteTabWidget::stackedWidget()
 {
     return m_stackedWidget;
+}
+
+QWidget *LiteTabWidget::tabBarWidget()
+{
+    return m_tabBarWidget;
 }
 
 void LiteTabWidget::setTabText(int index, const QString & text)
@@ -237,4 +245,9 @@ void LiteTabWidget::tabCurrentChanged(int index)
 void LiteTabWidget::setCurrentIndex(int index)
 {    
     m_tabBar->setCurrentIndex(index);
+}
+
+void LiteTabWidget::tabMoved(int from, int to)
+{
+    m_widgetList.swap(from,to);
 }

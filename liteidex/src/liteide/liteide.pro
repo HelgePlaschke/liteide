@@ -7,11 +7,16 @@
 include (../../liteidex.pri)
 include (../liteapp/liteapp.pri)
 
-QT -= gui
+QT += core gui
+
+macx {
+    QT += xml
+}
 
 TARGET = $$IDE_APP_TARGET
 DESTDIR = $$IDE_APP_PATH
 TEMPLATE = app
+LIBS += -L$$IDE_LIBRARY_PATH
 
 macx {
     LIBS += -L$$IDE_BIN_PATH

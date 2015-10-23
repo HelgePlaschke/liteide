@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>493</width>
-    <height>199</height>
+    <height>214</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -26,7 +26,7 @@
          <string>Goimports updates your Go import lines, adding missing ones and removing unreferenced ones.</string>
         </property>
         <property name="text">
-         <string>Use goimports instead of gofmt,for code formatting</string>
+         <string>Use goimports instead of gofmt, for code formatting</string>
         </property>
        </widget>
       </item>
@@ -56,7 +56,7 @@
       <item>
        <widget class="QCheckBox" name="enableSyncCheckBox">
         <property name="text">
-         <string> Synchronous code formatting</string>
+         <string>Synchronous code formatting</string>
         </property>
        </widget>
       </item>
@@ -81,21 +81,21 @@
         </item>
        </layout>
       </item>
+      <item>
+       <spacer name="verticalSpacer">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>40</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
      </layout>
     </widget>
-   </item>
-   <item>
-    <spacer name="verticalSpacer">
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>20</width>
-       <height>40</height>
-      </size>
-     </property>
-    </spacer>
    </item>
   </layout>
  </widget>

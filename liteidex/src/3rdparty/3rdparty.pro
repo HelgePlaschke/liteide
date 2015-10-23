@@ -8,7 +8,10 @@ SUBDIRS = \
     qtc_texteditor  \
     qtc_gdbmi \
     qtc_editutil \
+    qtc_searchresult \
+    qt_browser \
     qjson \
     elidedlabel \
     sundown \
+    cplusplus \
 

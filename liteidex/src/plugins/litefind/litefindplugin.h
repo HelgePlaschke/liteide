@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -42,12 +42,9 @@ public slots:
     void find();
     void replace();
     void hideFind();
-    void hideFileSearch();
-    void fileSearch();
 protected:
     LiteApi::IApplication *m_liteApp;
     FindEditor *m_findEditor;
-    FileSearch  *m_fileSearch;
     QAction *m_findAct;
     QAction *m_findNextAct;
     QAction *m_findPrevAct;
@@ -66,9 +63,9 @@ public:
     PluginFactory() {
         m_info->setId("plugin/LiteFind");
         m_info->setName("LiteFind");
-        m_info->setAnchor("visualfc");
-        m_info->setVer("x19");
-        m_info->setInfo("Find/Replace Util");
+        m_info->setAuthor("visualfc");
+        m_info->setVer("X27.2");
+        m_info->setInfo("Core Find/Replace");
         m_info->setMustLoad(true);
     }
 };

@@ -6,20 +6,21 @@ include (../../api/liteenvapi/liteenvapi.pri)
 include(../../api/golangastapi/golangastapi.pri)
 include(../../utils/fileutil/fileutil.pri)
 include(../../utils/processex/processex.pri)
-include (../../3rdparty/qtc_editutil/qtc_editutil.pri)
 
 DEFINES += GOLANGCODE_LIBRARY
 
 SOURCES += golangcodeplugin.cpp \
         golangcode.cpp \
         golangcodeoptionfactory.cpp \
-        golangcodeoption.cpp
+        golangcodeoption.cpp \
+    ../liteeditor/faketooltip.cpp
 
 HEADERS += golangcodeplugin.h\
         golangcode_global.h \
         golangcode.h \
         golangcodeoptionfactory.h \
-        golangcodeoption.h
+        golangcodeoption.h \
+    ../liteeditor/faketooltip.h
 
 FORMS += \
         golangcodeoption.ui

@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -50,9 +50,9 @@ public:
     {
         m_info->setId("plugin/filebrowser");
         m_info->setName("FileBrowser");
-        m_info->setAnchor("visualfc");
-        m_info->setVer("x20");
-        m_info->setInfo("File Browser");
+        m_info->setAuthor("visualfc");
+        m_info->setVer("X27.1");
+        m_info->setInfo("File System Browser");
     }
 };
 

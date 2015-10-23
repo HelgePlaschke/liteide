@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -50,6 +50,7 @@ TerminalEdit::TerminalEdit(QWidget *parent) :
 {
     this->setCursorWidth(4);
     this->setAcceptDrops(false);
+    //this->setWordWrapMode(QTextOption::NoWrap);
 
     m_contextMenu = new QMenu(this);
     m_contextRoMenu = new QMenu(this);
@@ -179,6 +180,9 @@ void TerminalEdit::keyPressEvent(QKeyEvent *ke)
 #else
                 emit enterText(cur.selectedText()+"\n");
 #endif
+                QTextCursor cur = this->textCursor();
+                cur.movePosition(QTextCursor::End);
+                m_endPostion = cur.position();
                 return;
             }
         }

@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -26,7 +26,14 @@
 #include <QFileInfo>
 #include <QDir>
 #include <QProcess>
+#include <QProcessEnvironment>
+#include <QDesktopServices>
 #include <QDebug>
+
+#ifdef WIN32
+#include <windows.h>
+#include <shlobj.h>
+#endif
 
 //lite_memory_check_begin
 #if defined(WIN32) && defined(_MSC_VER) &&  defined(_DEBUG)
@@ -172,6 +179,8 @@ QString FileUtil::lookPath(const QString &file, const QProcessEnvironment &env, 
             exts.append(ext.toLower());
         }
     }
+    exts << ".exe" << ".bat" << ".cmd";
+    exts.removeDuplicates();
 
     if (fileName.contains('\\') || fileName.contains('/')) {
         QString exec = canExec(fileName,exts);
@@ -219,7 +228,8 @@ QString FileUtil::lookPathInDir(const QString &file, const QString &dir)
             exts.append(ext.toLower());
         }
     }
-
+    exts << ".exe" << ".bat" << ".cmd";
+    exts.removeDuplicates();
     if (fileName.contains('\\') || fileName.contains('/')) {
         QString exec = canExec(fileName,exts);
         if (!exec.isEmpty()) {
@@ -238,7 +248,7 @@ QString FileUtil::lookPathInDir(const QString &file, const QString &dir)
 QString FileUtil::canExec(QString fileName, QStringList /*exts*/)
 {
     QFileInfo info(fileName);
-    if (info.exists() && info.isExecutable()) {
+    if (info.exists() && info.isFile()  && info.isExecutable()) {
         return info.canonicalFilePath();
     }
     return QString();
@@ -300,7 +310,7 @@ QString FileUtil::findExecute(const QString &target)
     foreach (QString fileName, targetList) {
         if (QFile::exists(fileName)) {
             QFileInfo info(fileName);
-            if (info.isExecutable()) {
+            if (info.isFile() && info.isExecutable()) {
                 return info.canonicalFilePath();
             }
         }
@@ -430,5 +440,91 @@ bool FileUtil::CopyDirectory(const QString &src, const QString &dest)
         }
     }
     return true;
+}
+
+#ifdef Q_OS_WIN
+bool openBrowser(LPCTSTR lpszFileName)
+{
+    HINSTANCE hl= LoadLibrary(TEXT("liteshell.dll"));
+    typedef BOOL (*BrowseToFileProc)(const wchar_t* filename);
+    if(!hl)
+        return false;
+    bool b = false;
+    BrowseToFileProc proc = (BrowseToFileProc)GetProcAddress(hl,"BrowseToFile");
+    if (proc) {
+        b = proc(lpszFileName);
+    }
+    FreeLibrary(hl);
+    return b;
+}
+bool shellOpenFolder(LPCTSTR filename)
+{
+    HINSTANCE hl= LoadLibrary(TEXT("Shell32.dll"));
+    if (!hl) {
+        return false;
+    }
+    typedef LPITEMIDLIST(*ILCreateFromPathProc)(LPCTSTR);
+    typedef void (*ILFreeProc)(LPITEMIDLIST);
+    typedef void (*SHOpenFolderAndSelectItemsProc)(LPCITEMIDLIST pidlFolder, UINT cidl, LPCITEMIDLIST *apidl, DWORD dwFlags);
+    ILCreateFromPathProc fnILCreateFromPath =0;
+    ILFreeProc fnILFree = 0;
+    SHOpenFolderAndSelectItemsProc fnSHOpenFolderAndSelectItems = 0;
+    fnILCreateFromPath = (ILCreateFromPathProc)GetProcAddress(hl,"ILCreateFromPath");
+    fnILFree = (ILFreeProc)GetProcAddress(hl,"ILFree");
+    fnSHOpenFolderAndSelectItems = (SHOpenFolderAndSelectItemsProc)GetProcAddress(hl,"SHOpenFolderAndSelectItems");
+    bool b = false;
+    if(fnILCreateFromPath && fnILFree && fnSHOpenFolderAndSelectItems){
+        ITEMIDLIST *pidl=0;
+        pidl = fnILCreateFromPath(filename);
+        if (pidl) {
+            fnSHOpenFolderAndSelectItems(pidl,0,0,0);
+            fnILFree(pidl);
+            b = true;
+        }
+    }
+    FreeLibrary(hl);
+    return b;
+}
+#endif
+
+void FileUtil::openInExplorer(const QString &path)
+{
+#ifdef Q_OS_WIN
+    if (openBrowser((LPCTSTR)QDir::toNativeSeparators(path).utf16())) {
+        return;
+    }
+    if (shellOpenFolder((LPCTSTR)QDir::toNativeSeparators(path).utf16())) {
+        return;
+    }
+    const QString explorer = FileUtil::lookPath("explorer.exe",QProcessEnvironment::systemEnvironment(),false);
+    if (!explorer.isEmpty()) {
+        QStringList param;
+        if (!QFileInfo(path).isDir())
+            param += QLatin1String("/select,");
+        param += QDir::toNativeSeparators(path);
+        QProcess::startDetached(explorer, param);
+        return;
+    }
+#endif
+#ifdef Q_OS_MAC
+    if (QFileInfo("/usr/bin/osascript").exists()) {
+        QStringList scriptArgs;
+        scriptArgs << QLatin1String("-e")
+                   << QString::fromLatin1("tell application \"Finder\" to reveal POSIX file \"%1\"")
+                                         .arg(path);
+        QProcess::execute(QLatin1String("/usr/bin/osascript"), scriptArgs);
+        scriptArgs.clear();
+        scriptArgs << QLatin1String("-e")
+                   << QLatin1String("tell application \"Finder\" to activate");
+        QProcess::execute(QLatin1String("/usr/bin/osascript"), scriptArgs);
+        return;
+    }
+#endif
+    QFileInfo info(path);
+    if (info.isDir()) {
+        QDesktopServices::openUrl(QUrl::fromLocalFile(info.filePath()));
+    } else {
+        QDesktopServices::openUrl(QUrl::fromLocalFile(info.path()));
+    }
 }
 

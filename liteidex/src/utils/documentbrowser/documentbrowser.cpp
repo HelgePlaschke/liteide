@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -62,7 +62,7 @@ DocumentBrowser::DocumentBrowser(LiteApi::IApplication *app, QObject *parent) :
     m_htmlWidget = app->htmlWidgetManager()->createByName(this,"QTextBrowser");
 
     m_toolBar = new QToolBar;
-    m_toolBar->setIconSize(LiteApi::getToolBarIconSize());
+    m_toolBar->setIconSize(LiteApi::getToolBarIconSize(m_liteApp));
 
     m_backwardAct = new QAction(QIcon("icon:images/backward.png"),tr("Back"),this);
     m_forwardAct = new QAction(QIcon("icon:images/forward.png"),tr("Forward"),this);
@@ -107,6 +107,7 @@ DocumentBrowser::DocumentBrowser(LiteApi::IApplication *app, QObject *parent) :
     connect(m_htmlWidget,SIGNAL(linkHovered(QUrl)),this,SIGNAL(linkHovered(QUrl)));
     connect(m_htmlWidget,SIGNAL(linkClicked(QUrl)),this,SLOT(linkClicked(QUrl)));
     connect(m_htmlWidget,SIGNAL(loadFinished(bool)),this,SIGNAL(documentLoaded()));
+    connect(m_htmlWidget,SIGNAL(anchorChanged(QString)),this,SIGNAL(anchorChanged(QString)));
     connect(m_backwardAct,SIGNAL(triggered()),this,SLOT(backward()));
     connect(m_forwardAct,SIGNAL(triggered()),this,SLOT(forward()));
     connect(m_reloadUrlAct,SIGNAL(triggered()),this,SLOT(reloadUrl()));
@@ -405,7 +406,6 @@ void DocumentBrowser::resetFontSize()
     QFont font = widget->font();
     font.setPointSize(fontSize);
     widget->setFont(font);
-
 }
 
 void DocumentBrowser::requestFontZoom(int zoom)

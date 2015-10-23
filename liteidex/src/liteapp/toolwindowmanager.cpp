@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -23,6 +23,7 @@
 
 #include "toolwindowmanager.h"
 #include "toolmainwindow.h"
+#include "liteapp_global.h"
 //lite_memory_check_begin
 #if defined(WIN32) && defined(_MSC_VER) &&  defined(_DEBUG)
      #define _CRTDBG_MAP_ALLOC
@@ -35,11 +36,7 @@
 
 QAction *ToolWindowManager::addToolWindow(Qt::DockWidgetArea area, QWidget *widget, const QString &id, const QString &title, bool split, QList<QAction*> widgetActions)
 {
-    QAction *act = ((ToolMainWindow*)m_liteApp->mainWindow())->addToolWindow(m_liteApp,area,widget,id,title,split,widgetActions);
-    if (act) {
-        m_liteApp->actionManager()->insertViewMenu(LiteApi::ViewMenuToolWindowPos,act);
-    }
-    return act;
+    return ((ToolMainWindow*)m_liteApp->mainWindow())->addToolWindow(m_liteApp,area,widget,id,title,split,widgetActions);
 }
 
 void ToolWindowManager::moveToolWindow(Qt::DockWidgetArea area,QAction *action, bool split)

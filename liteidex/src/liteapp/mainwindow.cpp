@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -54,7 +54,7 @@
 //lite_memory_check_end
 
 
-MainWindow::MainWindow(IApplication *app,QWidget *parent)
+MainWindow::MainWindow(IApplication *app, QWidget *parent)
     : ToolMainWindow(parent),
       m_liteApp(app)
 {
@@ -72,13 +72,17 @@ MainWindow::MainWindow(IApplication *app,QWidget *parent)
 
     m_mainSplitter = new QSplitter(Qt::Vertical,this);
     setCentralWidget(m_mainSplitter);
-
-    loadInitToolState(m_liteApp->settings()->value("liteapp/toolState").toByteArray());
 }
 
 QSplitter *MainWindow::splitter()
 {
     return m_mainSplitter;
+}
+
+void MainWindow::setWindowStyle(IWindowStyle *style)
+{
+    ToolMainWindow::setWindowStyle(style);
+    //loadInitToolState(m_liteApp->settings()->value("liteapp/toolState").toByteArray());
 }
 
 MainWindow::~MainWindow()
@@ -143,7 +147,7 @@ void MainWindow::dropEvent(QDropEvent *event)
     }
     if (!folders.isEmpty()) {
         foreach (QString folder, folders) {
-            m_liteApp->fileManager()->addFolder(folder);
+            m_liteApp->fileManager()->addFolderList(folder);
         }
     }
 }

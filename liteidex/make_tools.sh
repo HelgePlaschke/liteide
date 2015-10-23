@@ -1,9 +1,6 @@
 #!/bin/sh
 
-export GOPATH=$PWD
+export GOPATH=$PWD:$GOPATH
 
-go install -v -ldflags "-s -r ." liteidex
-go install -v -ldflags -s tools/goastview
-go install -v -ldflags -s tools/godocview
-go install -v -ldflags -s tools/goexec
-go install -v -ldflags -s tools/goapi
+go install -ldflags "-s" -v github.com/visualfc/gotools
+go install -ldflags "-s" -v github.com/nsf/gocode

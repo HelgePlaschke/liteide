@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -31,5 +31,9 @@
 #else
 #  define GOLANGDOCSHARED_EXPORT Q_DECL_IMPORT
 #endif
+
+#define GODOCFIND_MATCHWORD "godocfind/matchword"
+#define GODOCFIND_MATCHCASE "godocfind/matchcase"
+#define GODOCFIND_USEREGEXP "godocfind/useregexp"
 
 #endif // GOLANGDOC_GLOBAL_H

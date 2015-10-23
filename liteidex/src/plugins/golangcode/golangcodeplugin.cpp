@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -23,13 +23,13 @@
 
 #include "golangcodeplugin.h"
 #include "liteeditorapi/liteeditorapi.h"
-#include "fileutil/fileutil.h"
 #include "qtc_editutil/uncommentselection.h"
 #include "golangcode.h"
 #include "golangcodeoptionfactory.h"
 #include <QMenu>
 #include <QAction>
 #include <QPlainTextEdit>
+#include <QFileInfo>
 #include <QDebug>
 //lite_memory_check_begin
 #if defined(WIN32) && defined(_MSC_VER) &&  defined(_DEBUG)
@@ -49,12 +49,10 @@ bool GolangCodePlugin::load(LiteApi::IApplication *app)
 {
     m_liteApp = app;
     m_code = new GolangCode(app,this);
+
     app->optionManager()->addFactory(new GolangCodeOptionFactory(app,this));
-    m_commentAct = new QAction(tr("Comment/Uncomment Selection"),this);
-    m_commentAct->setShortcut(QKeySequence("CTRL+/"));
-    connect(m_commentAct,SIGNAL(triggered()),this,SLOT(editorComment()));
     connect(app->editorManager(),SIGNAL(editorCreated(LiteApi::IEditor*)),this,SLOT(editorCreated(LiteApi::IEditor*)));
-    connect(app->editorManager(),SIGNAL(currentEditorChanged(LiteApi::IEditor*)),this,SLOT(currentEditorChanged(LiteApi::IEditor*)));
+    //connect(app->editorManager(),SIGNAL(currentEditorChanged(LiteApi::IEditor*)),this,SLOT(currentEditorChanged(LiteApi::IEditor*)));
     connect(app,SIGNAL(loaded()),this,SLOT(appLoaded()));
     return true;
 }
@@ -70,38 +68,16 @@ void GolangCodePlugin::appLoaded()
 
 void GolangCodePlugin::editorCreated(LiteApi::IEditor *editor)
 {
-    if (editor && editor->mimeType() == "text/x-gosrc") {
-        editor->widget()->addAction(m_commentAct);
-        QMenu *menu = LiteApi::getEditMenu(editor);
-        if (menu) {
-            menu->addSeparator();
-            menu->addAction(m_commentAct);
-        }
-        menu = LiteApi::getContextMenu(editor);
-        if (menu) {
-            menu->addSeparator();
-            menu->addAction(m_commentAct);
-        }
-        LiteApi::ILiteEditor *liteEdit = LiteApi::getLiteEditor(editor);
-        if (liteEdit) {
-            liteEdit->setSpellCheckZoneDontComplete(true);
-        }
-    }
-}
-
-void GolangCodePlugin::editorComment()
-{
-    LiteApi::IEditor *editor = m_liteApp->editorManager()->currentEditor();
     if (!editor) {
         return;
     }
-    QPlainTextEdit *textEdit = LiteApi::findExtensionObject<QPlainTextEdit*>(editor,"LiteApi.QPlainTextEdit");
-    if (!textEdit) {
+    if (editor->mimeType() != "text/x-gosrc") {
         return;
     }
-    Utils::CommentDefinition cd;
-    cd.setAfterWhiteSpaces(true);
-    Utils::unCommentSelection(textEdit,cd);
+    LiteApi::ILiteEditor *liteEdit = LiteApi::getLiteEditor(editor);
+    if (liteEdit) {
+        liteEdit->setSpellCheckZoneDontComplete(true);
+    }
 }
 
 void GolangCodePlugin::currentEditorChanged(LiteApi::IEditor *editor)

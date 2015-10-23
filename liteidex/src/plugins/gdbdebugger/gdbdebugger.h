@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -139,6 +139,7 @@ public:
     virtual void createWatch(const QString &var, bool floating, bool watchModel = false);
     virtual void removeWatch(const QString &var, bool children);
     virtual void removeWatchByName(const QString &name, bool children);
+    virtual void showFrame(QModelIndex index);
 protected:
     void command_helper(const GdbCmd &cmd, bool emitOut);
 public slots:

@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -204,8 +204,9 @@ bool LiteEditorFile::open(const QString &fileName, const QString &mimeType, bool
             m_lineTerminatorMode = CRLFLineTerminator;
         }
     }
+
     bool noprintCheck = m_liteApp->settings()->value(EDITOR_NOPRINTCHECK,true).toBool();
-    if (noprintCheck) {
+    if (noprintCheck && !LiteApi::mimeIsText(mimeType)) {
         for (int i = 0; i < text.length(); i++) {
             if (!text[i].isPrint() && !text[i].isSpace() && text[i] != '\r' && text[i] != '\n') {
                 text[i] = '.';
@@ -216,6 +217,33 @@ bool LiteEditorFile::open(const QString &fileName, const QString &mimeType, bool
 
     m_document->setPlainText(text);
     return true;
+}
+
+bool LiteEditorFile::setLineEndUnix(bool b)
+{
+    if (this->isLineEndUnix() == b) {
+        return false;
+    }
+    QString text = m_document->toPlainText();
+    if (b) {
+        m_lineTerminatorMode = LFLineTerminator;
+        text.replace("\r\n","\n");
+    } else {
+        m_lineTerminatorMode = CRLFLineTerminator;
+        text.replace("\n","\r\n");
+    }
+    m_document->setPlainText(text);
+    return true;
+}
+
+bool LiteEditorFile::isLineEndUnix() const
+{
+    return m_lineTerminatorMode == LFLineTerminator;
+}
+
+bool LiteEditorFile::isLineEndWindow() const
+{
+    return m_lineTerminatorMode == CRLFLineTerminator;
 }
 
 bool LiteEditorFile::create(const QString &contents, const QString &mimeType)

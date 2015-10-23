@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -45,6 +45,7 @@ public:
     QString workDir() const;
     QString gotool() const { return m_gotool; }
     void start(const QStringList &args);
+    void start_list_json();
     QByteArray stdOutputData() const { return m_stdOutput; }
     QString stdOutputUtf8() const {
         return QString::fromUtf8(m_stdOutput,m_stdOutput.size());

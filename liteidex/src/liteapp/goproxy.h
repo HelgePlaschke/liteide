@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -25,18 +25,25 @@
 #define GOPROXY_H
 
 #include "liteapi/liteapi.h"
+#include <QMap>
 
 class GoProxy : public LiteApi::IGoProxy
 {
     Q_OBJECT
 public:
     explicit GoProxy(QObject *parent = 0);
-    virtual bool isValid() const;
     static bool hasProxy();
+    virtual bool isValid() const;
+    virtual bool isRunning() const;
+    virtual QByteArray commandId() const;
+    virtual void writeStdin(const QByteArray &data);
 public slots:
     virtual void call(const QByteArray &id, const QByteArray &args = QByteArray());
 public:
-    void callback(char *id, char *reply, int len, int err);
+    void callback(char *id, int id_size, char *reply, int reply_size, int err);
+protected:
+    bool m_isRuning;
+    QByteArray m_id;
 };
 
 #endif // GOPROXY_H

@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -22,6 +22,7 @@
 // Creator: visualfc <visualfc@gmail.com>
 
 #include "liteappoption.h"
+#include "outputoption.h"
 #include "liteappoptionfactory.h"
 #include "liteapp_global.h"
 //lite_memory_check_begin
@@ -42,13 +43,15 @@ LiteAppOptionFactory::LiteAppOptionFactory(LiteApi::IApplication *app, QObject *
 
 QStringList LiteAppOptionFactory::mimeTypes() const
 {
-    return QStringList() << OPTION_LITEAPP;
+    return QStringList() << OPTION_LITEAPP << OPTION_LITEOUTPUT;
 }
 
 LiteApi::IOption *LiteAppOptionFactory::create(const QString &mimeType)
 {
     if (mimeType == OPTION_LITEAPP) {
         return new LiteAppOption(m_liteApp,this);
+    } else if (mimeType == OPTION_LITEOUTPUT) {
+        return new OutputOption(m_liteApp,this);
     }
     return 0;
 }

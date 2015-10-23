@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -70,19 +70,16 @@ GoplayBrowser::GoplayBrowser(LiteApi::IApplication *app, QObject *parent)
     }
 
     m_widget = new QWidget;
-
     m_editor = m_liteApp->fileManager()->createEditor(data,"text/x-gosrc");
     m_editor->open(m_playFile,"text/x-gosrc");
-
-    QToolBar *toolBar = LiteApi::findExtensionObject<QToolBar*>(m_editor,"LiteApi.QToolBar");
-
     m_output = new TextOutput(m_liteApp);
 
+    QToolBar *toolBar = new QToolBar;
+
     QVBoxLayout *layout = new QVBoxLayout;
-    QHBoxLayout *head = new QHBoxLayout;
     QSplitter *spliter = new QSplitter(Qt::Vertical);
 
-    QLabel *label = new QLabel(QString("<h2>%1</h2>").arg(tr("Go Playground")));
+    QLabel *label = new QLabel(QString("%1").arg(tr("Go Playground")));
 
     QAction *run = new QAction(tr("Run"),this);
     QAction *stop = new QAction(tr("Stop"),this);
@@ -92,21 +89,19 @@ GoplayBrowser::GoplayBrowser(LiteApi::IApplication *app, QObject *parent)
     QAction *shell = new QAction(tr("Explore Folder"),this);
     m_editLabel  = new QLabel;
 
-    if (toolBar) {
-        toolBar->addSeparator();
-        toolBar->addAction(run);
-        toolBar->addAction(stop);
-        toolBar->addAction(_new);
-        toolBar->addAction(load);
-        toolBar->addAction(save);
-        toolBar->addSeparator();
-        toolBar->addAction(shell);
-        toolBar->addSeparator();
-        toolBar->addWidget(m_editLabel);
-    }
+    toolBar->addWidget(label);
+    toolBar->addSeparator();
+    toolBar->addAction(run);
+    toolBar->addAction(stop);
+    toolBar->addAction(_new);
+    toolBar->addAction(load);
+    toolBar->addAction(save);
+    toolBar->addSeparator();
+    toolBar->addAction(shell);
+    toolBar->addSeparator();
+    toolBar->addWidget(m_editLabel);
 
-    head->addWidget(label);
-    layout->addLayout(head);
+    layout->addWidget(toolBar);
 
     spliter->addWidget(m_editor->widget());
     spliter->addWidget(m_output);

@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -38,7 +38,7 @@ class LiteWordCompleter : public LiteCompleter
 public:
     explicit LiteWordCompleter(QObject *parent = 0);
 public slots:
-    virtual void completionPrefixChanged(QString);
+    virtual void completionPrefixChanged(QString,bool force);
 protected:
     virtual QString textUnderCursor(QTextCursor tc) const;
     QSet<QString>   m_wordSet;

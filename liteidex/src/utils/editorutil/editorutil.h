@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -36,6 +36,7 @@ public:
     static void SwitchHead(QPlainTextEdit *ed, const QString &tagAdd, const QStringList &tagRemove, bool blockStart = true);
     static void MarkSelection(QPlainTextEdit *ed, const QString &mark1, const QString &mark2);
     static void MarkSelection(QPlainTextEdit *ed, const QString &mark);
+    static void loadDiff(QTextCursor &cursor, const QString &diff);
 };
 
 #endif // EDITORUTIL_H

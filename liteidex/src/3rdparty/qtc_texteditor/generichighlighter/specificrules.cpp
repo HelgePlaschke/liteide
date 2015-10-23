@@ -75,7 +75,6 @@ void replaceByCaptures(QString *s, const QStringList &captures)
         Q_ASSERT(ok);
 
         s->replace(index, accumulator.length() + 1, captures.at(number));
-        index = from;
     }
 }
 }
@@ -93,25 +92,47 @@ bool DetectCharRule::doMatchSucceed(const QString &text,
 {
     if (matchCharacter(text, length, progress, m_char)) {
         return true;
-        // This is to make code folding have a control flow style look in the case of braces.
-        // Naturally, this assumes that language definitions use braces with this meaning.
-        if ( (m_char == '{' || m_char == '(' || m_char == '[')
-             && progress->isOnlySpacesSoFar() && !isLookAhead()) {
-            progress->setOpeningBraceMatchAtFirstNonSpace(true);
-        } else if ( (m_char == '}' || m_char == ')' || m_char == ']') &&
-                    !text.right(length - progress->offset()).trimmed().isEmpty()) {
-            progress->setClosingBraceMatchAtNonEnd(true);
-        }
+    }
+    return false;
+//    if (matchCharacter(text, length, progress, m_char)) {
+//        return true;
+//        // This is to make code folding have a control flow style look in the case of braces.
+//        // Naturally, this assumes that language definitions use braces with this meaning.
 //        if (m_char == kOpeningBrace && progress->isOnlySpacesSoFar() && !isLookAhead()) {
 //            progress->setOpeningBraceMatchAtFirstNonSpace(true);
 //        } else if (m_char == kClosingBrace &&
 //                   !text.right(length - progress->offset()).trimmed().isEmpty()) {
 //            progress->setClosingBraceMatchAtNonEnd(true);
 //        }
+//        return true;
+//    }
+//    return false;
 
-        return true;
-    }
-    return false;
+//    if (matchCharacter(text, length, progress, m_char)) {
+//        qDebug() << m_char << text;
+//        if (text.trimmed() == "} else {" && m_char == '}') {
+//            //qDebug() << "error";
+//             progress->setClosingBraceMatchAtNonEnd(true);
+//        }
+//        return true;
+//        // This is to make code folding have a control flow style look in the case of braces.
+//        // Naturally, this assumes that language definitions use braces with this meaning.
+//        if ( (m_char == '{' || m_char == '(' || m_char == '[')
+//             && progress->isOnlySpacesSoFar() && !isLookAhead()) {
+//            progress->setOpeningBraceMatchAtFirstNonSpace(true);
+//        } else if ( (m_char == '}' || m_char == ')' || m_char == ']') &&
+//                    !text.right(length - progress->offset()).trimmed().isEmpty()) {
+//            progress->setClosingBraceMatchAtNonEnd(true);
+//        }
+//        if (m_char == kOpeningBrace && progress->isOnlySpacesSoFar() && !isLookAhead()) {
+//            progress->setOpeningBraceMatchAtFirstNonSpace(true);
+//        } else if (m_char == kClosingBrace &&
+//                   !text.right(length - progress->offset()).trimmed().isEmpty()) {
+//            progress->setClosingBraceMatchAtNonEnd(true);
+//        }
+//        return true;
+//    }
+//    return false;
 }
 
 // Detect2Chars

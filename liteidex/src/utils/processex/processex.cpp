@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -179,8 +179,52 @@ void ProcessEx::startEx(const QString &cmd, const QString &args)
 bool ProcessEx::startDetachedEx(const QString& cmd, const QStringList &args)
 {
 #ifdef Q_OS_WIN
-    return (int)ShellExecuteW(NULL, NULL, (LPCWSTR)cmd.toStdWString().data(), (LPCWSTR)args.join(" ").toStdWString().data(), NULL, SW_HIDE) > 32;
+    return (intptr_t)ShellExecuteW(NULL, NULL, (LPCWSTR)cmd.toStdWString().data(), (LPCWSTR)args.join(" ").toStdWString().data(), NULL, SW_HIDE) > 32;
 #else
     return QProcess::startDetached(cmd, args);
 #endif
+}
+
+
+Process::Process(QObject *parent) : QProcess(parent)
+{
+
+}
+
+bool Process::isRunning() const
+{
+    return this->state() == QProcess::Running;
+}
+
+void Process::startEx(const QString &cmd, const QString &args)
+{
+#ifdef Q_OS_WIN
+    this->setNativeArguments(args);
+    if (cmd.indexOf(" ")) {
+        this->start("\""+cmd+"\"");
+    } else {
+        this->start(cmd);
+    }
+#else
+    this->start(cmd+" "+args);
+#endif
+}
+
+bool Process::startDetachedEx(const QString &cmd, const QStringList &args)
+{
+#ifdef Q_OS_WIN
+    return (intptr_t)ShellExecuteW(NULL, NULL, (LPCWSTR)cmd.toStdWString().data(), (LPCWSTR)args.join(" ").toStdWString().data(), NULL, SW_HIDE) > 32;
+#else
+    return QProcess::startDetached(cmd, args);
+#endif
+}
+
+void Process::setUserData(int id, const QVariant &data)
+{
+    m_idVarMap.insert(id,data);
+}
+
+QVariant Process::userData(int id) const
+{
+    return m_idVarMap.value(id);
 }

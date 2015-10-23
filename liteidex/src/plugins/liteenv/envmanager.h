@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -39,15 +39,22 @@ public:
     virtual QString filePath() const;
     virtual QProcessEnvironment& environment();
     virtual QStringList orgEnvLines() const;
+    virtual QMap<QString,QString> goEnvMap() const;
     virtual void reload();
+    void loadGoEnv();
 public:
     void loadEnvFile(QIODevice *dev);
     static void loadEnv(EnvManager *manager, const QString &filePath);
+protected slots:
+    void readStdout();
+    void readStderr();
 protected:
     QString m_filePath;
     QStringList m_orgEnvLines;
     QString m_id;
     QProcessEnvironment m_env;
+    QMap<QString,QString> m_goEnvMap;
+    QProcess *m_process;
 };
 
 class EnvManager : public LiteApi::IEnvManager
@@ -64,19 +71,27 @@ public:
     virtual LiteApi::IEnv *currentEnv() const;
     virtual QProcessEnvironment currentEnvironment() const;
 protected slots:
+    virtual void reloadCurrentEnv();
+    void appLoaded();
     void envActivated(QString);
     void editCurrentEnv();
     void editorSaved(LiteApi::IEditor*);
-public:
+    void goenvError(const QString &id, const QString &msg);
+    void goenvChanged(const QString &id);    
+public:    
     void setCurrentEnv(LiteApi::IEnv *env);
     void addEnv(LiteApi::IEnv *build);
     void removeEnv(LiteApi::IEnv *build);
     void loadEnvFiles(const QString &path);
+    void emitEnvChanged();
+public slots:
+    void broadcast(QString module, QString id, QString);
 protected:
     QList<LiteApi::IEnv*>    m_envList;
     LiteApi::IEnv           *m_curEnv;
     QToolBar        *m_toolBar;
     QComboBox       *m_envCmb;
+    bool             m_appLoaded;
 };
 
 #endif // ENVMANAGER_H

@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -21,6 +21,7 @@
 // Module: htmlpreview.cpp
 // Creator: visualfc <visualfc@gmail.com>
 
+#include "markdown_global.h"
 #include "htmlpreview.h"
 #include "sundown/mdtohtml.h"
 #include <QScrollBar>
@@ -92,7 +93,7 @@ HtmlPreview::HtmlPreview(LiteApi::IApplication *app,QObject *parent) :
     QList<QAction*> actions;
     actions << m_configMenu->menuAction() << m_reloadAct << m_exportHtmlAct << m_exportPdfAct << m_printPreviewAct << m_cssMenu->menuAction();
 
-    m_toolAct = m_liteApp->toolWindowManager()->addToolWindow(Qt::RightDockWidgetArea,
+    m_toolAct = m_liteApp->toolWindowManager()->addToolWindow(Qt::BottomDockWidgetArea,
                                                   m_widget,
                                                   QString("HtmlPreview"),
                                                   QString(tr("HTML Preview")),
@@ -112,8 +113,8 @@ HtmlPreview::HtmlPreview(LiteApi::IApplication *app,QObject *parent) :
     connect(m_reloadAct,SIGNAL(triggered()),this,SLOT(reload()));
     connect(m_htmlUpdateTimer,SIGNAL(timeout()),this,SLOT(htmlUpdate()));
 
-    m_syncScrollAct->setChecked(m_liteApp->settings()->value("markdown/syncscroll",true).toBool());
-    m_syncSwitchAct->setChecked(m_liteApp->settings()->value("markdown/syncswitch",true).toBool());
+    m_syncScrollAct->setChecked(m_liteApp->settings()->value(MARKDOWN_SYNCSCROLLHTML,true).toBool());
+    m_syncSwitchAct->setChecked(m_liteApp->settings()->value(MARKDOWN_SYNCVIEWHTML,false).toBool());
 }
 
 HtmlPreview::~HtmlPreview()
@@ -123,8 +124,8 @@ HtmlPreview::~HtmlPreview()
     if (act != 0) {
         m_liteApp->settings()->setValue("markdown/css",act->text());
     }
-    m_liteApp->settings()->setValue("markdown/syncscroll",m_syncScrollAct->isChecked());
-    m_liteApp->settings()->setValue("markdown/syncswitch",m_syncSwitchAct->isChecked());
+    m_liteApp->settings()->setValue(MARKDOWN_SYNCSCROLLHTML,m_syncScrollAct->isChecked());
+    m_liteApp->settings()->setValue(MARKDOWN_SYNCVIEWHTML,m_syncSwitchAct->isChecked());
     delete m_configMenu;
     delete m_cssMenu;
     if (m_widget) {
@@ -172,7 +173,7 @@ void HtmlPreview::appLoaded()
     sep->setSeparator(true);
     m_cssActGroup->addAction(sep);
 
-    QFile file(m_liteApp->resourcePath()+"/markdown/export.html");
+    QFile file(m_liteApp->resourcePath()+"/packages/markdown/export.html");
     if (file.open(QFile::ReadOnly)) {
         m_exportOrgTemple = file.readAll();
     } else {
@@ -185,7 +186,7 @@ void HtmlPreview::appLoaded()
     QString defcss;
 
     if (m_bWebkit) {
-        QDir dir(m_liteApp->resourcePath()+"/markdown/css");
+        QDir dir(m_liteApp->resourcePath()+"/packages/markdown/css");
         foreach (QFileInfo info, dir.entryInfoList(QStringList()<<"*.css",QDir::Files)) {
             QAction *act = new QAction(info.fileName(),this);
             act->setCheckable(true);
@@ -450,7 +451,7 @@ void HtmlPreview::cssTtriggered(QAction *act)
         if (!m_bWebkit) {
             fileName = ":/markdown/css/"+act->text();
         } else {
-            fileName = m_liteApp->resourcePath()+"/markdown/css/"+act->text();
+            fileName = m_liteApp->resourcePath()+"/packages/markdown/css/"+act->text();
         }
         cssData = this->loadCssData(fileName);
     }

@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -155,7 +155,11 @@ void FindEditor::setVisible(bool b)
             QString text;
             QPlainTextEdit *ed = LiteApi::findExtensionObject<QPlainTextEdit*>(editor,"LiteApi.QPlainTextEdit");
             if (ed) {
-                text = ed->textCursor().selectedText();
+                QTextCursor cur = ed->textCursor();
+                if (!cur.hasSelection()) {
+                    cur.select(QTextCursor::WordUnderCursor);
+                }
+                text = cur.selectedText();
             }
             if (!text.isEmpty()) {
                 this->m_findEdit->setText(text);
@@ -202,7 +206,7 @@ void FindEditor::findHelper(FindOption *opt)
         }
     }
     if (find.isNull()) {
-        m_status->setText(tr("Not find"));
+        m_status->setText(tr("Not found"));
     } else {
         m_status->setText(QString("Ln:%1 Col:%2").
                               arg(find.blockNumber()+1).
@@ -331,7 +335,7 @@ void FindEditor::replaceHelper(LiteApi::ITextEditor *editor, FindOption *opt, in
             if (opt->useRegexp) {
                 text.replace(QRegExp(opt->findText,cs),opt->replaceText);
             } else {
-                text.replace(opt->findText,opt->replaceText);
+                text.replace(QRegExp(opt->findText,cs,QRegExp::FixedString),opt->replaceText);
             }
             find.removeSelectedText();
             find.insertText(text);
@@ -357,7 +361,7 @@ void FindEditor::replaceHelper(LiteApi::ITextEditor *editor, FindOption *opt, in
                                       arg(find.blockNumber()+1).
                                       arg(find.columnNumber()+1));
             } else {
-                m_status->setText(tr("Not find"));
+                m_status->setText(tr("Not found"));
             }
             break;
         }

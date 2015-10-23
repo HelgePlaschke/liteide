@@ -47,14 +47,14 @@ echo build liteide tools ...
 cd $LITEIDE_ROOT
 export GOPATH=$PWD:$GOPATH
 
-go install -ldflags "-s" -v tools/goastview
-go install -ldflags "-s" -v tools/godocview
-go install -ldflags "-s" -v tools/goexec
-go install -ldflags "-s" -v tools/goapi
-go install -ldflags "-s" -v tools/gopresent
-go install -ldflags "-s" -v github.com/visualfc/goimports
+go install -ldflags "-s" -v github.com/visualfc/gotools
+
+if [ $? -ge 1 ]; then
+	echo 'error, go install fail'
+	exit 1
+fi
+
 go install -ldflags "-s" -v github.com/nsf/gocode
-go install -ldflags "-s" -v github.com/gpmgo/gopm
 
 if [ $? -ge 1 ]; then
 	echo 'error, go install fail'
@@ -76,7 +76,8 @@ cp -R -v $LITEIDE_ROOT/LGPL_EXCEPTION.TXT liteide
 cp -R -v $LITEIDE_ROOT/../README.md liteide
 cp -R -v $LITEIDE_ROOT/../CONTRIBUTORS liteide
 
-cp -R -v $LITEIDE_ROOT/bin/* liteide/LiteIDE.app/Contents/MacOS
+cp -R -v $LITEIDE_ROOT/bin/gotools liteide/LiteIDE.app/Contents/MacOS
+cp -R -v $LITEIDE_ROOT/bin/gocode liteide/LiteIDE.app/Contents/MacOS
 cp -R -v $LITEIDE_ROOT/deploy/* liteide/LiteIDE.app/Contents/Resources
 cp -R -v $LITEIDE_ROOT/os_deploy/macosx/* liteide/LiteIDE.app/Contents/Resources
 

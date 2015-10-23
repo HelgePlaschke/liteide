@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -29,6 +29,7 @@
 #include "extension/extension.h"
 #include "goproxy.h"
 
+
 using namespace LiteApi;
 
 class MainWindow;
@@ -44,6 +45,7 @@ class HtmlWidgetManager;
 class QSettings;
 class QSplitter;
 class LiteAppOptionFactory;
+
 
 class LiteApp : public IApplication
 {
@@ -105,7 +107,7 @@ public:
     void setPluginPath(const QString &path); 
     void setResourcePath(const QString &path);
 protected slots:
-    void goproxyDone(const QByteArray &id,const QByteArray &reply);
+    void goproxyDone(const QByteArray &reply);
     void dbclickLogOutput(QTextCursor);
     void projectReloaded();
     void currentProjectChanged(LiteApi::IProject *project);

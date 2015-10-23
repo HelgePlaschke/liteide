@@ -1,7 +1,7 @@
 /**************************************************************************
 ** This file is part of LiteIDE
 **
-** Copyright (c) 2011-2013 LiteIDE Team. All rights reserved.
+** Copyright (c) 2011-2015 LiteIDE Team. All rights reserved.
 **
 ** This library is free software; you can redistribute it and/or
 ** modify it under the terms of the GNU Lesser General Public
@@ -40,8 +40,12 @@ public:
     virtual QString id() const = 0;
     virtual QString filePath() const = 0;
     virtual QStringList orgEnvLines() const = 0;
+    virtual QMap<QString,QString> goEnvMap() const = 0;
     virtual QProcessEnvironment& environment() = 0;
     virtual void reload() = 0;
+signals:
+    void goenvError(QString,QString);
+    void goenvChanged(QString);
 };
 
 class IEnvManager : public IManager
@@ -54,6 +58,7 @@ public:
     virtual void setCurrentEnvId(const QString &id) = 0;
     virtual IEnv *currentEnv() const = 0;
     virtual QProcessEnvironment currentEnvironment() const = 0;
+    virtual void reloadCurrentEnv() = 0;
 signals:
     void currentEnvChanged(LiteApi::IEnv*);
 };
@@ -89,15 +94,23 @@ inline QProcessEnvironment getCurrentEnvironment(LiteApi::IApplication *app)
 
 inline QString getDefaultGOOS()
 {
+    const char* goos = "";
 #ifdef Q_OS_WIN
-    return "windows";
+    goos = "windows";
 #endif
 #ifdef Q_OS_LINUX
-    return "linux";
+    goos = "linux";
 #endif
 #ifdef Q_OS_DARWIN
-    return "darwin";
+    goos = "darwin";
 #endif
+#ifdef Q_OS_FREEBSD
+    goos = "freebsd";
+#endif
+#ifdef Q_OS_OPENBSD
+    goos = "openbsd";
+#endif
+	return goos;
 }
 
 inline QString getDefaultGOROOT()
@@ -109,6 +122,11 @@ inline QString getDefaultGOROOT()
 #endif
 }
 
+inline bool hasGoEnv(const QProcessEnvironment &env)
+{
+    return env.contains("GOROOT") && env.contains("GOARCH");
+}
+
 inline QProcessEnvironment getGoEnvironment(LiteApi::IApplication *app)
 {
     QProcessEnvironment env = getCurrentEnvironment(app);
@@ -117,6 +135,18 @@ inline QProcessEnvironment getGoEnvironment(LiteApi::IApplication *app)
 #else
     QString sep = ":";
 #endif
+
+    IEnvManager *mgr = LiteApi::getEnvManager(app);
+    if (mgr) {
+        LiteApi::IEnv *ce = mgr->currentEnv();
+        if (ce) {
+            QMapIterator<QString,QString> i(ce->goEnvMap());
+            while(i.hasNext()) {
+                i.next();
+                env.insert(i.key(),i.value());
+            }
+        }
+    }
 
     QString goos = env.value("GOOS");
     if (goos.isEmpty()) {
@@ -156,9 +186,9 @@ inline QProcessEnvironment getGoEnvironment(LiteApi::IApplication *app)
     return env;
 }
 
-inline QStringList getGopathList(LiteApi::IApplication *app, bool includeGoroot)
+inline QStringList getGOPATH(LiteApi::IApplication *app, bool includeGoroot)
 {
-    QProcessEnvironment env = getCurrentEnvironment(app);
+    QProcessEnvironment env = getGoEnvironment(app);
 #ifdef Q_OS_WIN
     QString sep = ";";
 #else
@@ -182,9 +212,9 @@ inline QStringList getGopathList(LiteApi::IApplication *app, bool includeGoroot)
     return pathList;
 }
 
-inline QString getGoroot(LiteApi::IApplication *app)
+inline QString getGOROOT(LiteApi::IApplication *app)
 {
-    return getCurrentEnvironment(app).value("GOROOT");
+    return getGoEnvironment(app).value("GOROOT");
 }
 
 
